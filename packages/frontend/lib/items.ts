@@ -1,16 +1,16 @@
 /**
- * What Stash shows: items from the person's own files on this device, from
+ * What Dropsea shows: items from the person's own files on this device, from
  * Oxy Files and from their albums, in one shape the views, the selection and
  * the menus share; and the places a window can be (its locations).
  */
 import type { AssetRecord } from '@oxy.so/core';
 import type { PlatformTrashedItem } from '@oxy.so/bloom/platform-surface';
-import type { Album, AlbumItem } from '@stash/shared-types';
+import type { Album, AlbumItem } from '@dropsea/shared-types';
 import { kindOf } from '@/lib/kinds';
 
 /** What every item has, whatever its source. */
 interface ItemFacts {
-  /** Unique among every item Stash shows: a local item's URI, else its source's prefix and id. */
+  /** Unique among every item Dropsea shows: a local item's URI, else its source's prefix and id. */
   key: string;
   name: string;
   isFolder: boolean;
@@ -38,7 +38,7 @@ export interface CloudItem extends ItemFacts {
   hasThumbnail: boolean;
 }
 
-/** A photo in one of the person's albums: an Oxy Files asset Stash points at. */
+/** A photo in one of the person's albums: an Oxy Files asset Dropsea points at. */
 export interface AlbumPhoto extends ItemFacts {
   source: 'album-photo';
   albumId: string;
@@ -205,7 +205,7 @@ export function albumEntry(album: Album): AlbumEntry {
 }
 
 /**
- * A photo of an album. Stash keeps no name for it (the item points at an
+ * A photo of an album. Dropsea keeps no name for it (the item points at an
  * asset), so it is named as Photos names one, by when it was taken: `nameFor`
  * writes that date in the person's language.
  */

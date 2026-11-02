@@ -39,7 +39,7 @@ function namesIn(folderUri: string): string[] {
 }
 
 /**
- * What Stash does to items: new folders, renames and moves on this device;
+ * What Dropsea does to items: new folders, renames and moves on this device;
  * the Trash (the platform's for this device's files, Oxy Files' for the
  * cloud's), putting back and deleting for good. Each says what failed, and
  * shows what changed at once.
@@ -72,7 +72,7 @@ export function useFileActions() {
     results.forEach((result, index) => {
       if (result.status === 'fulfilled') return;
       const item = items[index];
-      console.warn(`Stash could not ${action} in Oxy Files`, {
+      console.warn(`Dropsea could not ${action} in Oxy Files`, {
         assetId: item?.assetId,
         error: result.reason,
       });
@@ -191,7 +191,7 @@ export function useFileActions() {
         try {
           await files.emptyTrash();
         } catch (error) {
-          console.warn('Stash could not empty the Trash', error);
+          console.warn('Dropsea could not empty the Trash', error);
           toast.error(strings.fileProblems.io);
         }
         await refreshPlatformTrash();

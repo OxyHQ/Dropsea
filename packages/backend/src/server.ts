@@ -9,7 +9,7 @@ import { createOxyPhotoSource } from './services/photos.service';
 async function main(): Promise<void> {
   await connectPostgres();
 
-  // One client for verifying sessions and for reading Oxy Files as Stash's
+  // One client for verifying sessions and for reading Oxy Files as Dropsea's
   // own service identity (the attested task role on ECS).
   const oxy = new OxyServer({
     baseURL: config.oxyApiUrl,
@@ -18,7 +18,7 @@ async function main(): Promise<void> {
   const server = http.createServer(createApp(oxy, createOxyPhotoSource(oxy)));
 
   server.listen(config.port, () => {
-    console.log(`Stash backend listening on port ${config.port}`);
+    console.log(`Dropsea backend listening on port ${config.port}`);
   });
 
   let isShuttingDown = false;
@@ -53,6 +53,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((error: unknown) => {
-  console.error('Stash backend failed to start:', error);
+  console.error('Dropsea backend failed to start:', error);
   process.exitCode = 1;
 });

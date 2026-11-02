@@ -182,7 +182,7 @@ const EXTENSION_BY_MIME: Record<string, string> = {
   'video/webm': 'webm',
 };
 
-/** The extension a file of a MIME type takes, for a name that has none; none for a type Stash does not know. */
+/** The extension a file of a MIME type takes, for a name that has none; none for a type Dropsea does not know. */
 export function extensionForMime(mime: string | null): string {
   if (!mime) return '';
   return EXTENSION_BY_MIME[mime.split(';')[0]?.trim().toLowerCase() ?? ''] ?? '';

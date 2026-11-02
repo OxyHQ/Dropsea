@@ -12,10 +12,10 @@ import { queryClient } from '@/lib/query-client';
 import { FALLBACK_LOCALE, SUPPORTED_LOCALES } from '@/lib/strings';
 
 /**
- * Stash's providers. The platform's adapter (OxyOS's windows, menu bar and the
+ * Dropsea's providers. The platform's adapter (OxyOS's windows, menu bar and the
  * person's places and Trash) is registered around this by the runtime that
- * runs Stash; Stash's own BloomProvider keeps it. Oxy resolves the person's
- * language and Stash speaks it.
+ * runs Dropsea; Dropsea's own BloomProvider keeps it. Oxy resolves the person's
+ * language and Dropsea speaks it.
  */
 export default function RootLayout() {
   return (
@@ -31,7 +31,10 @@ export default function RootLayout() {
               fallbackLocale: FALLBACK_LOCALE,
               onChange: setLocale,
               onError: (error, locale) =>
-                console.warn('Stash could not follow the language Oxy resolved', { locale, error }),
+                console.warn('Dropsea could not follow the language Oxy resolved', {
+                  locale,
+                  error,
+                }),
             }}
           >
             <Slot />

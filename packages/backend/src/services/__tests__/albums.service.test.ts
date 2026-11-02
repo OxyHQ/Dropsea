@@ -43,7 +43,7 @@ function photo(assetId: string): PhotoFacts {
 }
 
 /**
- * A fake Oxy Files: knows which asset ids each user owns and linked to Stash,
+ * A fake Oxy Files: knows which asset ids each user owns and linked to Dropsea,
  * and records what it was asked to read.
  */
 function fakePhotos(readable: Record<string, string[]>): PhotoSource & { reads: string[][] } {
@@ -102,7 +102,7 @@ describe('albums', () => {
 });
 
 describe('items', () => {
-  test('adds the photos Oxy Files lets Stash read and rejects the rest without a reason', async () => {
+  test('adds the photos Oxy Files lets Dropsea read and rejects the rest without a reason', async () => {
     const owner = newUser();
     try {
       const album = await createAlbum(owner, 'Gallery');

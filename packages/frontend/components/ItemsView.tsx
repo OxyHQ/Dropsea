@@ -166,7 +166,7 @@ export interface ItemsViewProps {
   canDrop: (dragged: readonly Item[], target: Item) => boolean;
   onDrop: (dragged: readonly Item[], target: Item) => void;
   /**
-   * Files dropped on the items from any application, Stash among them: the folder an item (or
+   * Files dropped on the items from any application, Dropsea among them: the folder an item (or
    * the place, null) takes them into, or null where nothing does; and the drop.
    */
   dropFolderFor?: (target: Item | null) => string | null;
@@ -233,9 +233,9 @@ export function ItemsView({
   const [band, setBand] = useState<Box | null>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
   // A drag of files from any application over the items (the platform's, or the browser's): the
-  // folder item it would go into, highlighted as Stash's own drag highlights it.
+  // folder item it would go into, highlighted as Dropsea's own drag highlights it.
   const [dropOver, setDropOver] = useState<string | null>(null);
-  // Where a drag of the items goes once it leaves Stash's own handling: the platform's drag,
+  // Where a drag of the items goes once it leaves Dropsea's own handling: the platform's drag,
   // between applications (OxyOS ADR 0035), where there is one.
   const platformDrag = usePlatformDrag();
   const dragPreview = useRef<ComponentRef<typeof View> | null>(null);
@@ -456,7 +456,7 @@ export function ItemsView({
     if (key && isFirstMove && platformDrag) {
       // The platform takes the drag from here (OxyOS ADR 0035): to a folder of this window or of
       // another, the dock's Trash, any application. The selected items of this device go as
-      // their files; the platform ends the press, and nothing of Stash's own drag shows.
+      // their files; the platform ends the press, and nothing of Dropsea's own drag shows.
       const keys = isSelected(selection, key) ? selection.keys : [key];
       const files = draggedItems(keys).flatMap((item) =>
         item.source === 'local' ? [item.uri] : [],

@@ -4,7 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { Directory, File, pathsAt } from './node-file-system';
 
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'stash-local-files-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'dropsea-local-files-'));
 
 mock.module('expo-file-system', () => ({ Directory, File, Paths: pathsAt(root) }));
 mock.module('expo', () => ({

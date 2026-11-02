@@ -1,5 +1,5 @@
 /**
- * Stash's words, in English and Spanish. Oxy resolves which language the
+ * Dropsea's words, in English and Spanish. Oxy resolves which language the
  * person uses (`OxyProvider language`); `stringsFor` gives the words for it.
  */
 import type { PlatformFileError, PlatformPlace } from '@oxy.so/bloom/platform-surface';
@@ -12,7 +12,7 @@ type PlaceKind = PlatformPlace['kind'] | 'device';
 export type FileProblem = PlatformFileError | 'unavailable';
 
 const en = {
-  appName: 'Stash',
+  appName: 'Dropsea',
   sections: {
     favourites: 'Favourites',
     locations: 'Locations',
@@ -172,14 +172,14 @@ const en = {
   fileProblems: {
     'not-found': 'The item is no longer there.',
     exists: 'An item with that name is already there.',
-    refused: 'Stash cannot change that item.',
+    refused: 'Dropsea cannot change that item.',
     denied: 'You do not have permission to do that.',
     io: 'The disk could not do that.',
     unavailable: 'Files on this device are not available.',
   } satisfies Record<FileProblem, string>,
-  couldNotLoad: 'Stash could not load this.',
-  couldNotOpenFolder: 'Stash could not open this folder.',
-  couldNotChange: 'Stash could not do that. Try again.',
+  couldNotLoad: 'Dropsea could not load this.',
+  couldNotOpenFolder: 'Dropsea could not open this folder.',
+  couldNotChange: 'Dropsea could not do that. Try again.',
   cloudProblem: (name: string) => `Oxy Files could not change “${name}”.`,
   transfers: {
     uploading: (count: number, percent: string) =>
@@ -200,8 +200,8 @@ const en = {
       count === 1 ? `Added 1 photo to “${album}”` : `Added ${count} photos to “${album}”`,
     rejected: (count: number) =>
       count === 1
-        ? 'One item is not a photo Stash can read, and was not added.'
-        : `${count} items are not photos Stash can read, and were not added.`,
+        ? 'One item is not a photo Dropsea can read, and was not added.'
+        : `${count} items are not photos Dropsea can read, and were not added.`,
   },
   preview: {
     kind: 'Kind',
@@ -211,7 +211,7 @@ const en = {
     dimensions: 'Dimensions',
     where: 'Where',
     noPreview: 'No preview for this kind of file.',
-    couldNotRead: 'Stash could not read this file.',
+    couldNotRead: 'Dropsea could not read this file.',
   },
   origins: {
     cloud: 'Oxy Files',
@@ -234,7 +234,7 @@ const en = {
 export type Strings = typeof en;
 
 const es: Strings = {
-  appName: 'Stash',
+  appName: 'Dropsea',
   sections: {
     favourites: 'Favoritos',
     locations: 'Ubicaciones',
@@ -397,14 +397,14 @@ const es: Strings = {
   fileProblems: {
     'not-found': 'El elemento ya no está ahí.',
     exists: 'Ya hay un elemento con ese nombre ahí.',
-    refused: 'Stash no puede cambiar ese elemento.',
+    refused: 'Dropsea no puede cambiar ese elemento.',
     denied: 'No tienes permiso para hacerlo.',
     io: 'El disco no ha podido hacerlo.',
     unavailable: 'Los archivos de este dispositivo no están disponibles.',
   },
-  couldNotLoad: 'Stash no ha podido cargar esto.',
-  couldNotOpenFolder: 'Stash no ha podido abrir esta carpeta.',
-  couldNotChange: 'Stash no ha podido hacerlo. Inténtalo de nuevo.',
+  couldNotLoad: 'Dropsea no ha podido cargar esto.',
+  couldNotOpenFolder: 'Dropsea no ha podido abrir esta carpeta.',
+  couldNotChange: 'Dropsea no ha podido hacerlo. Inténtalo de nuevo.',
   cloudProblem: (name) => `Oxy Files no ha podido cambiar «${name}».`,
   transfers: {
     uploading: (count, percent) =>
@@ -433,8 +433,8 @@ const es: Strings = {
         : `Se han añadido ${count} fotos a «${album}»`,
     rejected: (count) =>
       count === 1
-        ? 'Un elemento no es una foto que Stash pueda leer y no se ha añadido.'
-        : `${count} elementos no son fotos que Stash pueda leer y no se han añadido.`,
+        ? 'Un elemento no es una foto que Dropsea pueda leer y no se ha añadido.'
+        : `${count} elementos no son fotos que Dropsea pueda leer y no se han añadido.`,
   },
   preview: {
     kind: 'Clase',
@@ -444,7 +444,7 @@ const es: Strings = {
     dimensions: 'Dimensiones',
     where: 'Ubicación',
     noPreview: 'No hay vista previa para esta clase de archivo.',
-    couldNotRead: 'Stash no ha podido leer este archivo.',
+    couldNotRead: 'Dropsea no ha podido leer este archivo.',
   },
   origins: {
     cloud: 'Oxy Files',
@@ -464,7 +464,7 @@ const es: Strings = {
   },
 };
 
-/** The locales Stash ships words for, as `OxyProvider language` takes them. */
+/** The locales Dropsea ships words for, as `OxyProvider language` takes them. */
 export const SUPPORTED_LOCALES = ['en', 'es'] as const;
 export const FALLBACK_LOCALE = 'en';
 

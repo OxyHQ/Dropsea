@@ -1,5 +1,5 @@
 /**
- * What Stash learns about a photo when it is added: its size, its seed
+ * What Dropsea learns about a photo when it is added: its size, its seed
  * colours and when it was taken. Read once from the bytes in Oxy Files and
  * kept on the item, so a page of photos needs no call per photo and a screen
  * showing one themes itself without reading pixels.
@@ -21,7 +21,7 @@ export interface PhotoFacts {
 
 /**
  * Reads the facts of a person's photos. An id that is not theirs, not linked
- * to Stash, not an image or not readable is simply absent from the result:
+ * to Dropsea, not an image or not readable is simply absent from the result:
  * one answer for all of them, so a caller cannot tell another person's file
  * from no file.
  */
@@ -54,14 +54,14 @@ export async function readPhoto(
   try {
     metadata = await sharp(bytes).metadata();
   } catch (error) {
-    console.warn('Stash could not decode a photo; it is not added', {
+    console.warn('Dropsea could not decode a photo; it is not added', {
       assetId,
       error: error instanceof Error ? error.message : String(error),
     });
     return null;
   }
   if (!metadata.width || !metadata.height) {
-    console.warn('Stash read a photo with no size; it is not added', { assetId });
+    console.warn('Dropsea read a photo with no size; it is not added', { assetId });
     return null;
   }
 
@@ -99,7 +99,7 @@ export function takenAtFromExif(assetId: string, exif: Buffer | undefined): Date
     photo = exifReader(exif).Photo;
   } catch (error) {
     // The photo is still added, with no capture time.
-    console.warn("Stash could not read a photo's EXIF", {
+    console.warn("Dropsea could not read a photo's EXIF", {
       assetId,
       error: error instanceof Error ? error.message : String(error),
     });
@@ -115,13 +115,13 @@ export function takenAtFromExif(assetId: string, exif: Buffer | undefined): Date
 }
 
 /**
- * The real source: Oxy Files, through Stash's own service identity.
+ * The real source: Oxy Files, through Dropsea's own service identity.
  *
  * 1. `metadataByIds` names each file's owner, mime and status; only the
  *    caller's own live images go on.
- * 2. `linkedDownloadUrls` answers only for files their owner linked to Stash
+ * 2. `linkedDownloadUrls` answers only for files their owner linked to Dropsea
  *    (oxy ADR 0021): that link, made by the person's own client, is their
- *    consent to Stash reading the file.
+ *    consent to Dropsea reading the file.
  * 3. Each one is downloaded and read.
  */
 export function createOxyPhotoSource(oxy: OxyServer): PhotoSource {
@@ -152,7 +152,7 @@ export function createOxyPhotoSource(oxy: OxyServer): PhotoSource {
             const response = await fetch(download.url);
             if (!response.ok) {
               // The status only: the URL is a live credential.
-              console.warn('Stash could not download a photo; it is not added', {
+              console.warn('Dropsea could not download a photo; it is not added', {
                 assetId: asset.id,
                 status: response.status,
               });

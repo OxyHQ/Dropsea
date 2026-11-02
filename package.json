@@ -1,6 +1,6 @@
 {
-  "name": "stash-monorepo",
-  "description": "Stash — photos and files by Oxy",
+  "name": "dropsea-monorepo",
+  "description": "Dropsea — photos and files by Oxy",
   "private": true,
   "workspaces": [
     "packages/backend",

@@ -1,5 +1,5 @@
 /**
- * Stash's backend (packages/backend), called with the person's Oxy session: a
+ * Dropsea's backend (packages/backend), called with the person's Oxy session: a
  * linked client keeps its bearer token in step with that session and hands a
  * 401 back to it to refresh.
  */
@@ -9,11 +9,11 @@ import type {
   AlbumItemsPage,
   CreateAlbumRequest,
   UpdateAlbumRequest,
-} from '@stash/shared-types';
-import { STASH_API_URL } from '@/lib/config';
+} from '@dropsea/shared-types';
+import { DROPSEA_API_URL } from '@/lib/config';
 import { oxyServices } from '@/lib/oxy';
 
-const backend = oxyServices.createLinkedClient({ baseURL: STASH_API_URL }).client;
+const backend = oxyServices.createLinkedClient({ baseURL: DROPSEA_API_URL }).client;
 
 /** Photos per page of an album. */
 export const ALBUM_PAGE_SIZE = 120;

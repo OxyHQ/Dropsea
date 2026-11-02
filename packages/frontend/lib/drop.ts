@@ -48,7 +48,7 @@ export function dropAction(items: readonly Item[], target: DropTarget): DropActi
 }
 
 /**
- * Where files dropped from any application (Stash among them) go: into the folder of this device
+ * Where files dropped from any application (Dropsea among them) go: into the folder of this device
  * dropped on, else into the folder shown; nowhere in Oxy Files, the photos, the albums or the
  * Trash.
  */

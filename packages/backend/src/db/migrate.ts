@@ -2,7 +2,7 @@
  * Apply the SQL migrations in `packages/backend/drizzle/` to `DATABASE_URL`,
  * through `@oxy.so/db/migrate`, the migrator create-oxy-app scaffolds.
  *
- *     bun run db:migrate --target-database=stash_dev [--phase=pre|post|all]
+ *     bun run db:migrate --target-database=dropsea_dev [--phase=pre|post|all]
  *
  * `--target-database` is REQUIRED: pointed at the wrong database a migrator
  * finds an empty ledger, applies the whole journal and exits 0 while the real

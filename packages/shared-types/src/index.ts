@@ -1,5 +1,5 @@
 /**
- * Stash API shapes — what the backend returns and accepts, shared with every
+ * Dropsea API shapes — what the backend returns and accepts, shared with every
  * client. Types only: nothing here runs.
  *
  * Every file is an Oxy Files asset. An item carries its `assetId`, never a
@@ -47,15 +47,15 @@ export interface UpdateAlbumRequest {
 }
 
 export interface AddAlbumItemsRequest {
-  /** Assets already uploaded with `oxy.assets.upload` and linked to Stash. */
+  /** Assets already uploaded with `oxy.assets.upload` and linked to Dropsea. */
   assetIds: string[];
 }
 
 export interface AddAlbumItemsResponse {
   items: AlbumItem[];
   /**
-   * Ids Stash could not add: not an image, not the caller's, or not linked to
-   * Stash. One answer for all three, so a caller cannot probe other people's
+   * Ids Dropsea could not add: not an image, not the caller's, or not linked to
+   * Dropsea. One answer for all three, so a caller cannot probe other people's
    * files.
    */
   rejectedAssetIds: string[];

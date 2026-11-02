@@ -20,7 +20,7 @@ import { Screen } from '@oxy.so/bloom/screen';
 import { Text } from '@oxy.so/bloom/typography';
 import { useWindowWidthClass } from '@oxy.so/bloom/hooks';
 import { useWindow } from '@oxy.so/bloom/window';
-import type { Album } from '@stash/shared-types';
+import type { Album } from '@dropsea/shared-types';
 import { type ReactNode, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { AlbumNameDialog } from '@/components/AlbumNameDialog';
@@ -187,7 +187,7 @@ export function Browser({ listing }: { listing: Listing }) {
           if (!isShown) setPreviewItem(item);
         },
         (error: unknown) => {
-          console.warn('The platform could not preview a file; Stash shows it', {
+          console.warn('The platform could not preview a file; Dropsea shows it', {
             uri: item.uri,
             error,
           });
@@ -227,7 +227,7 @@ export function Browser({ listing }: { listing: Listing }) {
   const answer = (uris: readonly string[]) => {
     if (!chooser) return;
     answerChosen(chooser, uris, folderUri).catch((error: unknown) =>
-      console.warn('Stash could not answer the file chooser', { uris, error }),
+      console.warn('Dropsea could not answer the file chooser', { uris, error }),
     );
   };
   const runStep = (step: ChooserStep) => {

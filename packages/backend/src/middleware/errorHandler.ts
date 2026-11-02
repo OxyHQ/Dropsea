@@ -35,6 +35,6 @@ export function errorHandler(
     res.status(400).json({ error: 'BadRequest', message: 'Malformed request body.' });
     return;
   }
-  console.error('Unhandled error in Stash backend:', error);
+  console.error('Unhandled error in Dropsea backend:', error);
   res.status(500).json({ error: 'InternalServerError', message: 'Something went wrong.' });
 }

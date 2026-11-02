@@ -1,16 +1,16 @@
 /**
  * The window, composed as Oxy's other apps compose theirs (Mention, Inbox) on
- * Bloom's AppShell: the sidebar (Stash's mark, Finder's sections, the Oxy
+ * Bloom's AppShell: the sidebar (Dropsea's mark, Finder's sections, the Oxy
  * account at its foot) and the route's place in one panel, whose own panels
  * hold the items and their preview. Bloom decides the rest: where the
  * platform has windows the sidebar stays in the window at every size (hiding
  * into its edge by its dock, peeking back), the panel's toolbar is the
- * window's title area, and the window is never made smaller than Stash's
+ * window's title area, and the window is never made smaller than Dropsea's
  * layout holds together at; on a phone the sidebar is the shell's drawer.
  *
  * As the file chooser the window is a sheet of the asking application's
  * window: its sidebar holds the places on this device, always beside the
- * items, with neither Stash's mark nor the Oxy account.
+ * items, with neither Dropsea's mark nor the Oxy account.
  */
 import { AppShell } from '@oxy.so/bloom/app-shell';
 import { usePlatformFiles } from '@oxy.so/bloom/platform-surface';
@@ -27,7 +27,7 @@ import { useSidebarTree } from '@/hooks/use-sidebar-tree';
 import { useViewer } from '@/hooks/use-viewer';
 import { locationKey } from '@/lib/items';
 
-const STASH_MARK = require('@/assets/images/icon.png');
+const DROPSEA_MARK = require('@/assets/images/icon.png');
 const SIDEBAR_WIDTH = 220;
 /**
  * The smallest window: the sidebar beside a toolbar that still holds its
@@ -52,7 +52,7 @@ export function BrowserShell() {
   return (
     <>
       <AppShell
-        testID="stash"
+        testID="dropsea"
         header={null}
         navigationAlign="content"
         navigationGap={0}
@@ -73,7 +73,11 @@ export function BrowserShell() {
             ? undefined
             : {
                 icon: (
-                  <Image source={STASH_MARK} className="h-7 w-7 rounded-[7px]" accessible={false} />
+                  <Image
+                    source={DROPSEA_MARK}
+                    className="h-7 w-7 rounded-[7px]"
+                    accessible={false}
+                  />
                 ),
                 wordmark: strings.appName,
                 onPress: () => {
@@ -124,7 +128,7 @@ export function BrowserShell() {
               (album) => {
                 if (album) navigate({ kind: 'album', albumId: album.id });
               },
-              (error: unknown) => console.warn('Stash could not make an album', error),
+              (error: unknown) => console.warn('Dropsea could not make an album', error),
             );
           }}
           onClose={() => setNewAlbumOpen(false)}

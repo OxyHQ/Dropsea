@@ -131,11 +131,11 @@ Agents load `AGENTS.md` from the repository root down to the working directory a
 
 Keep version numbers, changelogs and "fixed in commit X" stories out of these files. `package.json` is the truth for versions and git is the truth for history.
 
-## Stash
+## Dropsea
 
-Stash organises a person's photos and files; it never stores bytes. Every file lives in Oxy Files (`oxy.assets`) and a Stash row only points at it.
+Dropsea organises a person's photos and files; it never stores bytes. Every file lives in Oxy Files (`oxy.assets`) and a Dropsea row only points at it.
 
-- **The person's own client uploads and links the file to Stash** (`oxy.assets.upload`, then `oxy.assets.link` to this application). That link is the person's consent; without it the backend cannot read the file (`files:linked:read`, oxy ADR 0021), and Stash refuses the item.
+- **The person's own client uploads and links the file to Dropsea** (`oxy.assets.upload`, then `oxy.assets.link` to this application). That link is the person's consent; without it the backend cannot read the file (`files:linked:read`, oxy ADR 0021), and Dropsea refuses the item.
 - **The backend never mints a URL for a client.** It returns asset ids; each client resolves them with its own session (`oxy.assets.urls`), so a private photo is only ever readable by someone Oxy allows.
 - **Seed colours are worked out once, here, when an item is added** (`@oxy.so/color` over a 48×48 thumbnail), and travel with the item. A screen showing the photo themes itself without reading pixels.
 - Size and capture time are read from the bytes at the same moment (Oxy Files extracts its own metadata after the upload returns, and keeps no capture time) and copied onto the row, so a page of items needs no call per photo.

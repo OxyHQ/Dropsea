@@ -45,7 +45,7 @@ describe('what a file chooser takes', () => {
     expect(fitsTypes(photo, ['.PNG'])).toBe(true);
     expect(fitsTypes(notes, ['image/*', '.png'])).toBe(false);
     expect(fitsTypes(notes, ['text/*'])).toBe(true);
-    // A picture whose MIME type Stash does not know is still one of the image family.
+    // A picture whose MIME type Dropsea does not know is still one of the image family.
     expect(fitsTypes(raw, ['image/*'])).toBe(true);
     expect(fitsTypes(raw, ['.cr2'])).toBe(true);
     // What the source says it is wins over its name.

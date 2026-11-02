@@ -10,7 +10,7 @@ import { hrefFor } from '@/lib/routes';
 
 /**
  * Where a window opens: the person's home (or this device's folder) where
- * Stash has files on this device, else Oxy Files. As the file chooser, where
+ * Dropsea has files on this device, else Oxy Files. As the file chooser, where
  * its panel starts (`startFolder`).
  */
 export default function Start() {
@@ -24,7 +24,7 @@ export default function Start() {
   );
 }
 
-/** The panel's first folder, once Stash has read the one it keeps for the asking application. */
+/** The panel's first folder, once Dropsea has read the one it keeps for the asking application. */
 function ChooserStart({
   chooser,
   places,
@@ -44,7 +44,7 @@ function ChooserStart({
         if (!ignore) setRemembered({ folder });
       },
       (error: unknown) => {
-        console.warn('Stash could not read the folder it keeps for this application', {
+        console.warn('Dropsea could not read the folder it keeps for this application', {
           applicationId,
           error,
         });
@@ -58,7 +58,7 @@ function ChooserStart({
   if (!remembered) return null;
   const start = startFolder(chooser.request, remembered.folder, places, folderExists);
   if (!start) {
-    console.warn('Stash has no folder to open its panel in', { request: chooser.request });
+    console.warn('Dropsea has no folder to open its panel in', { request: chooser.request });
     return null;
   }
   return <Redirect href={hrefFor({ kind: 'folder', uri: start })} />;

@@ -10,7 +10,7 @@ const PLACES_KEY = ['platform-places'] as const;
 /**
  * The places on this device: the platform's (the home, its standard folders,
  * the volumes), following them as volumes come and go; or, where the platform
- * has none, the folder `expo-file-system` gives Stash. Empty where this
+ * has none, the folder `expo-file-system` gives Dropsea. Empty where this
  * platform has no files of its own (a browser).
  */
 export function useLocalPlaces(): { places: readonly LocalPlace[]; isLoading: boolean } {

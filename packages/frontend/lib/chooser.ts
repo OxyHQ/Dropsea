@@ -1,5 +1,5 @@
 /**
- * Stash as the person's file chooser: the open or save panel the platform
+ * Dropsea as the person's file chooser: the open or save panel the platform
  * starts it to show as a sheet of another application's window
  * (`usePlatformFiles()?.chooser`, a `PlatformFileChooser`). What the panel
  * lets the person choose for the request, what its button, a double click and
@@ -17,7 +17,7 @@ import type { Strings } from '@/lib/strings';
 
 /**
  * The kinds a media type's family (`image/*`) takes in, beyond the MIME types
- * Stash reads from a name: a `.cr2` is an image though no MIME type is known
+ * Dropsea reads from a name: a `.cr2` is an image though no MIME type is known
  * for it here.
  */
 const KINDS_OF_FAMILY: Record<string, readonly Kind[]> = {
@@ -154,7 +154,7 @@ export function saveStep(name: string, folderUri: string, items: readonly LocalI
 
 /**
  * Where the panel opens: the folder the asking application named, else the
- * one Stash last chose in for it, else the person's home (or their first
+ * one Dropsea last chose in for it, else the person's home (or their first
  * place); the first of them still there. Null when none is.
  */
 export function startFolder(
