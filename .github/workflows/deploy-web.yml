@@ -1,0 +1,68 @@
+# Deploys the web app to dropsea.net: the Expo web export, served by the Worker
+# packages/frontend/wrangler.toml declares (its name, its assets, its one
+# hostname). A push to main that changes the app deploys production.
+name: Deploy web
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-web.yml'
+      - 'packages/frontend/**'
+      - 'packages/shared-types/**'
+      - 'package.json'
+      - 'bun.lock'
+
+# One deploy at a time, never cancelled half-way; a newer pending run may
+# replace an older pending one, since main's newer head contains it.
+concurrency:
+  group: deploy-web
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build and deploy dropsea.net
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      # Public, compile-time values: the registered Oxy client id and the Oxy
+      # application photos are linked to (packages/frontend/.env.example). The
+      # API URLs are lib/config.ts's defaults: a variable set here but empty
+      # would be built in as '' and replace them.
+      EXPO_PUBLIC_OXY_CLIENT_ID: ${{ vars.EXPO_PUBLIC_OXY_CLIENT_ID }}
+      EXPO_PUBLIC_DROPSEA_APPLICATION_ID: ${{ vars.EXPO_PUBLIC_DROPSEA_APPLICATION_ID }}
+    steps:
+      # An app built without its client id cannot sign anyone in: refuse to
+      # deploy one rather than publish a page that fails every call.
+      - name: The app's Oxy registration is configured
+        run: |
+          for name in EXPO_PUBLIC_OXY_CLIENT_ID EXPO_PUBLIC_DROPSEA_APPLICATION_ID; do
+            [ -n "$(printenv "$name")" ] || { echo "::error::The repository variable $name is not set"; exit 1; }
+          done
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - name: Export the web app
+        working-directory: packages/frontend
+        run: bun run export:web
+        env:
+          NODE_ENV: production
+      # `bunx wrangler` with a pinned major, never `cloudflare/wrangler-action`:
+      # the action looks for a lockfile beside packages/frontend, finds none
+      # (it is at the root) and falls back to npm, which cannot resolve the
+      # workspace. The Worker is created on its first deploy, and claims
+      # dropsea.net from wrangler.toml.
+      - name: Deploy the Worker
+        working-directory: packages/frontend
+        run: bunx wrangler@4 deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
