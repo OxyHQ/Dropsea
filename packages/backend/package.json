@@ -5,7 +5,7 @@
   "dependencies": {
     "@aws-sdk/credential-providers": "^3.972.84",
     "@oxy.so/color": "^1.0.0",
-    "@oxy.so/core": "7.8.0",
+    "@oxy.so/core": "7.11.0",
     "@oxy.so/db": "^1.4.0",
     "@stash/shared-types": "workspace:*",
     "drizzle-orm": "0.45.4",
