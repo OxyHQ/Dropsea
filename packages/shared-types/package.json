@@ -1,5 +1,5 @@
 {
-  "name": "@stash/shared-types",
+  "name": "@dropsea/shared-types",
   "private": true,
   "type": "module",
   "exports": {

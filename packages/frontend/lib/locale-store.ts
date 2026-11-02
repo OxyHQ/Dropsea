@@ -1,6 +1,6 @@
 /**
- * The language Stash speaks: the one Oxy resolves for the person, given to
- * `OxyProvider language`'s `onChange` (oxy ADR 0022). Stash never works it
+ * The language Dropsea speaks: the one Oxy resolves for the person, given to
+ * `OxyProvider language`'s `onChange` (oxy ADR 0022). Dropsea never works it
  * out itself; until Oxy says, it is the fallback.
  */
 import { FALLBACK_LOCALE } from '@/lib/strings';

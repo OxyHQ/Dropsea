@@ -1,7 +1,7 @@
 /**
- * `expo-file-system`'s `Directory`, `File` and `Paths`, as the parts Stash uses
+ * `expo-file-system`'s `Directory`, `File` and `Paths`, as the parts Dropsea uses
  * behave, over Node's file system in a folder a test makes: the tests run
- * Stash's own local-files module against real files, as a device would.
+ * Dropsea's own local-files module against real files, as a device would.
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';

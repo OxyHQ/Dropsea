@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.27@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
 #
-# Stash backend image (@stash/backend), the shape of Willo's backend image.
+# Dropsea backend image (@dropsea/backend), the shape of Willo's backend image.
 #
 # Bun runs the TypeScript entrypoint directly (`bun packages/backend/src/server.ts`);
 # `bun run typecheck` below is a build-time gate only. Built for AWS Graviton
@@ -8,7 +8,7 @@
 # packages and the hoisted node_modules resolve (bunfig.toml pins
 # `linker = "hoisted"`):
 #
-#   docker build -f packages/backend/Dockerfile -t stash-backend .
+#   docker build -f packages/backend/Dockerfile -t dropsea-backend .
 #
 # sharp ships its libvips as a per-platform optional dependency
 # (`@img/sharp-linuxmusl-arm64` here), so --ignore-scripts installs a working

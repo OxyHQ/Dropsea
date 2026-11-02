@@ -3,19 +3,19 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "stash-monorepo",
+      "name": "dropsea-monorepo",
       "devDependencies": {
         "@biomejs/biome": "2.5.15",
       },
     },
     "packages/backend": {
-      "name": "@stash/backend",
+      "name": "@dropsea/backend",
       "dependencies": {
         "@aws-sdk/credential-providers": "^3.972.84",
+        "@dropsea/shared-types": "workspace:*",
         "@oxy.so/color": "^1.0.0",
         "@oxy.so/core": "7.11.0",
         "@oxy.so/db": "^1.4.0",
-        "@stash/shared-types": "workspace:*",
         "drizzle-orm": "0.45.4",
         "exif-reader": "^2.0.3",
         "express": "^5.3.0",
@@ -31,9 +31,10 @@
       },
     },
     "packages/frontend": {
-      "name": "@stash/frontend",
+      "name": "@dropsea/frontend",
       "version": "0.1.0",
       "dependencies": {
+        "@dropsea/shared-types": "workspace:*",
         "@expo/app-integrity": "~58.0.2",
         "@expo/vector-icons": "^15.1.1",
         "@oxy.so/app-preset": "5.2.1",
@@ -42,7 +43,6 @@
         "@oxy.so/services": "14.0.0",
         "@react-native-async-storage/async-storage": "2.2.0",
         "@react-native-community/netinfo": "12.0.1",
-        "@stash/shared-types": "workspace:*",
         "@tanstack/query-async-storage-persister": "^5.104.0",
         "@tanstack/query-sync-storage-persister": "^5.104.0",
         "@tanstack/react-query": "^5.104.0",
@@ -95,7 +95,7 @@
       },
     },
     "packages/shared-types": {
-      "name": "@stash/shared-types",
+      "name": "@dropsea/shared-types",
       "devDependencies": {
         "typescript": "~6.0.3",
       },
@@ -312,6 +312,12 @@
     "@biomejs/cli-win32-x64": ["@biomejs/cli-win32-x64@2.5.15", "", { "os": "win32", "cpu": "x64" }, "sha512-yAzh4UqEImV6Hcy0zjUqNfJAsUhoD64FBQCdTG8Md/Z2wQeVP/ZmJ3XRYAs1g8J9fjTFyl2fCtc5FB5til47+g=="],
 
     "@drizzle-team/brocli": ["@drizzle-team/brocli@0.10.2", "", {}, "sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w=="],
+
+    "@dropsea/backend": ["@dropsea/backend@workspace:packages/backend"],
+
+    "@dropsea/frontend": ["@dropsea/frontend@workspace:packages/frontend"],
+
+    "@dropsea/shared-types": ["@dropsea/shared-types@workspace:packages/shared-types"],
 
     "@emnapi/runtime": ["@emnapi/runtime@1.11.3", "", { "dependencies": { "tslib": "^2.4.0" } }, "sha512-Xz4Tpyki7XyrpbUK1jR1AhdAdaXyhhY4lZ3neLodmhpuWfy2PAQN5B46sAiU4liOXGLkHypn/qU+jvfWSCYYLA=="],
 
@@ -656,12 +662,6 @@
     "@smithy/types": ["@smithy/types@4.19.0", "", { "dependencies": { "tslib": "^2.6.2" } }, "sha512-r7jh49VJxGerfAcTQA6gXcKc+98zOp/tqRwzYjgOE+iSQsP6cEU1hq2QzbuipmP68QtYdY9wKEhiCQZIzHgZ4Q=="],
 
     "@socket.io/component-emitter": ["@socket.io/component-emitter@3.1.2", "", {}, "sha512-9BCxFwvbGg/RsZK9tjXd8s4UcwR0MWeFQ1XEKIQVVvAGJyINdrqKMcTRyLoK8Rse1GjzLV9cwjWV1olXRWEXVA=="],
-
-    "@stash/backend": ["@stash/backend@workspace:packages/backend"],
-
-    "@stash/frontend": ["@stash/frontend@workspace:packages/frontend"],
-
-    "@stash/shared-types": ["@stash/shared-types@workspace:packages/shared-types"],
 
     "@tailwindcss/node": ["@tailwindcss/node@4.3.2", "", { "dependencies": { "@jridgewell/remapping": "^2.3.5", "enhanced-resolve": "5.21.6", "jiti": "^2.7.0", "lightningcss": "1.32.0", "magic-string": "^0.30.21", "source-map-js": "^1.2.1", "tailwindcss": "4.3.2" } }, "sha512-yWP/sqEcBLaD8JuA6zNwxoYKr75qxTioYwlRwekj5Jr/I5GXnoJfjetH/psLUIv74cYTH2lBUEzBkinthoYcBg=="],
 

@@ -4,7 +4,7 @@ import { oxyServices } from '@/lib/oxy';
 
 /** Assets resolved in one request. */
 const CHUNK_SIZE = 50;
-/** Oxy's signed URLs last ten minutes; Stash asks again well before. */
+/** Oxy's signed URLs last ten minutes; Dropsea asks again well before. */
 const URL_STALE_MS = 4 * 60 * 1000;
 
 export interface AssetUrlRequest {

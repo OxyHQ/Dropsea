@@ -1,4 +1,4 @@
-/* Shared Oxy Tailwind v4 + NativeWind + Bloom base (@oxy.so/app-preset/base.css), and Stash's own sources. */
+/* Shared Oxy Tailwind v4 + NativeWind + Bloom base (@oxy.so/app-preset/base.css), and Dropsea's own sources. */
 @import "@oxy.so/app-preset/base.css";
 
 @source "./app/**/*.{js,jsx,ts,tsx}";

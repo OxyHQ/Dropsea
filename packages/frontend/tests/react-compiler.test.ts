@@ -1,6 +1,6 @@
 /**
  * Every component the window draws is compiled by the React Compiler, as
- * Stash's build runs it (`experiments.reactCompiler`). A component it cannot
+ * Dropsea's build runs it (`experiments.reactCompiler`). A component it cannot
  * compile is left as written, silently: it and everything it renders draw
  * again on every change above them, which made a click in a list redraw every
  * row. This runs the compiler Expo's preset uses over each file and fails on

@@ -1,11 +1,11 @@
 import { toast } from '@oxy.so/bloom/toast';
-import type { Album } from '@stash/shared-types';
+import type { Album } from '@dropsea/shared-types';
 import { useQueryClient } from '@tanstack/react-query';
 import { albumsKey } from '@/hooks/use-albums';
 import { useLocale } from '@/hooks/use-locale';
 import { useTransfers } from '@/hooks/use-transfers';
 import { useViewer } from '@/hooks/use-viewer';
-import { STASH_APPLICATION_ID } from '@/lib/config';
+import { DROPSEA_APPLICATION_ID } from '@/lib/config';
 import type { AlbumPhoto, Item, LocalItem } from '@/lib/items';
 import { oxyServices } from '@/lib/oxy';
 import {
@@ -15,20 +15,20 @@ import {
   listAlbumItems,
   removeAlbumItem,
   updateAlbum,
-} from '@/lib/stash-api';
+} from '@/lib/dropsea-api';
 
-/** Photos added in one request, as Stash's backend takes them. */
+/** Photos added in one request, as Dropsea's backend takes them. */
 const ADD_BATCH_SIZE = 100;
 
-/** The link that says an album uses a photo: what lets Stash read it, and the person's to take back. */
+/** The link that says an album uses a photo: what lets Dropsea read it, and the person's to take back. */
 function albumLink(albumId: string) {
-  return { app: STASH_APPLICATION_ID, entityType: 'album', entityId: albumId };
+  return { app: DROPSEA_APPLICATION_ID, entityType: 'album', entityId: albumId };
 }
 
 /**
- * Albums and what is in them. A photo joins an album as Stash's rules say:
+ * Albums and what is in them. A photo joins an album as Dropsea's rules say:
  * the person's own client uploads it (from this device) and links it to
- * Stash, and only then asks the backend to add it; leaving an album unlinks it.
+ * Dropsea, and only then asks the backend to add it; leaving an album unlinks it.
  */
 export function useAlbumActions() {
   const queryClient = useQueryClient();
@@ -43,7 +43,7 @@ export function useAlbumActions() {
     );
     results.forEach((result, index) => {
       if (result.status === 'rejected') {
-        console.warn('Stash could not unlink a photo from an album', {
+        console.warn('Dropsea could not unlink a photo from an album', {
           albumId,
           assetId: assetIds[index],
           error: result.reason,
@@ -59,7 +59,7 @@ export function useAlbumActions() {
         await refreshAlbums();
         return album;
       } catch (error) {
-        console.warn('Stash could not make an album', { name, error });
+        console.warn('Dropsea could not make an album', { name, error });
         toast.error(strings.couldNotChange);
         return null;
       }
@@ -69,7 +69,7 @@ export function useAlbumActions() {
       try {
         await updateAlbum(album.id, { name });
       } catch (error) {
-        console.warn('Stash could not rename an album', { albumId: album.id, error });
+        console.warn('Dropsea could not rename an album', { albumId: album.id, error });
         toast.error(strings.couldNotChange);
       }
       await refreshAlbums();
@@ -88,7 +88,7 @@ export function useAlbumActions() {
         await deleteAlbum(album.id);
         await unlinkAll(album.id, assetIds);
       } catch (error) {
-        console.warn('Stash could not delete an album', { albumId: album.id, error });
+        console.warn('Dropsea could not delete an album', { albumId: album.id, error });
         toast.error(strings.couldNotChange);
       }
       await refreshAlbums();
@@ -110,7 +110,7 @@ export function useAlbumActions() {
         const linkedIds = assetIds.filter((_, index) => linked[index]?.status === 'fulfilled');
         linked.forEach((result, index) => {
           if (result.status === 'rejected') {
-            console.warn('Stash could not link a photo to an album', {
+            console.warn('Dropsea could not link a photo to an album', {
               assetId: assetIds[index],
               error: result.reason,
             });
@@ -130,7 +130,7 @@ export function useAlbumActions() {
         if (added > 0) toast.success(strings.transfers.addedToAlbum(added, album.name));
         if (rejected > 0) toast.warning(strings.transfers.rejected(rejected));
       } catch (error) {
-        console.warn('Stash could not add photos to an album', { albumId: album.id, error });
+        console.warn('Dropsea could not add photos to an album', { albumId: album.id, error });
         toast.error(strings.couldNotChange);
       }
       await refreshAlbums();

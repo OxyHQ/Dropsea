@@ -5,7 +5,7 @@
  * `homes.routes.ts` keeps.
  */
 
-import type { AddAlbumItemsResponse, Album, AlbumItemsPage } from '@stash/shared-types';
+import type { AddAlbumItemsResponse, Album, AlbumItemsPage } from '@dropsea/shared-types';
 import { getRequiredOxyUserId, requireOxyAuth } from '@oxy.so/core/server';
 import { type Request, type Response, Router } from 'express';
 import { z } from 'zod';

@@ -3,7 +3,7 @@
  * read with `useSyncExternalStore`. A folder is listed once when a view first
  * shows it, again when a view shows it after nothing followed it for a while
  * (it may have changed meanwhile), and whenever the file system says it
- * changed (`Directory.watch`, whose events come coalesced) or Stash changed it;
+ * changed (`Directory.watch`, whose events come coalesced) or Dropsea changed it;
  * its state keeps its identity while what it holds is the same, so a burst of
  * watched changes redraws nothing.
  */
@@ -40,7 +40,7 @@ function read(uri: string): FolderState {
     return { status: 'ready', items: listFolder(uri) };
   } catch (error) {
     if (!folderExists(uri)) return { status: 'missing' };
-    console.warn('Stash could not list a folder', { uri, error });
+    console.warn('Dropsea could not list a folder', { uri, error });
     return { status: 'unreadable' };
   }
 }
@@ -109,7 +109,7 @@ export function getFolderState(uri: string): FolderState {
 
 /**
  * Follows a folder while anything shows it. A platform that cannot watch it
- * still shows Stash's own changes, which call `refreshFolder`.
+ * still shows Dropsea's own changes, which call `refreshFolder`.
  */
 export function subscribeFolder(uri: string, listener: () => void): () => void {
   const folder = folderAt(uri);
@@ -120,7 +120,7 @@ export function subscribeFolder(uri: string, listener: () => void): () => void {
     try {
       folder.stopWatching = watchFolder(folder.uri, () => update(folder));
     } catch (error) {
-      console.warn('Stash cannot watch a folder; it shows its own changes only', { uri, error });
+      console.warn('Dropsea cannot watch a folder; it shows its own changes only', { uri, error });
     }
   }
   return () => {
@@ -132,7 +132,7 @@ export function subscribeFolder(uri: string, listener: () => void): () => void {
   };
 }
 
-/** Lists a folder again after Stash changed it. */
+/** Lists a folder again after Dropsea changed it. */
 export function refreshFolder(uri: string): void {
   const folder = folders.get(normalizeUri(uri));
   if (folder) update(folder);

@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import { useLocale } from '@/hooks/use-locale';
 
-/** The longest album name Stash's backend keeps. */
+/** The longest album name Dropsea's backend keeps. */
 const MAX_ALBUM_NAME_LENGTH = 200;
 
 export function AlbumNameDialog({

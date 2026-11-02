@@ -4,7 +4,7 @@ import type {
   PlatformFileChooserRequest,
 } from '@oxy.so/bloom/platform-surface';
 
-/** Stash's own storage, as AsyncStorage keeps it: strings by key, in memory for the tests. */
+/** Dropsea's own storage, as AsyncStorage keeps it: strings by key, in memory for the tests. */
 const stored = new Map<string, string>();
 let isStorageFailing = false;
 mock.module('@react-native-async-storage/async-storage', () => ({
@@ -73,10 +73,10 @@ describe('the folder kept for each application', () => {
   });
 
   test('starts afresh from what it cannot read', async () => {
-    stored.set('stash.chooser.folders', '{not json');
+    stored.set('dropsea.chooser.folders', '{not json');
     expect(await rememberedFolder(ASTRO.id)).toBeNull();
     stored.set(
-      'stash.chooser.folders',
+      'dropsea.chooser.folders',
       JSON.stringify([['so.oxy.astro'], 7, ['so.oxy.inbox', 'file:///x']]),
     );
     expect(await rememberedFolder(ASTRO.id)).toBeNull();

@@ -1,7 +1,7 @@
 /**
- * Stash — Postgres schema.
+ * Dropsea — Postgres schema.
  *
- * Stash stores no bytes: an item points at an Oxy Files asset by id. What it
+ * Dropsea stores no bytes: an item points at an Oxy Files asset by id. What it
  * keeps beside the id is what a page of photos needs without a call per photo
  * (size, mime, seed colours, capture time), copied when the item is added.
  *
@@ -16,7 +16,7 @@ import { createdAt, generatedId, timestamptz, updatedAt } from '@oxy.so/db';
 
 /**
  * `albums` — a person's named collection. `owner_user_id` is the Oxy user id;
- * Stash has no users table of its own.
+ * Dropsea has no users table of its own.
  *
  * `cover_item_id` names one of the album's own items. It carries no foreign
  * key (the two tables would reference each other); `albums.service.ts` checks

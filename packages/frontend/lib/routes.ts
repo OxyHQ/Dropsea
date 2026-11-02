@@ -1,5 +1,5 @@
 /**
- * Where each location lives in Stash's routes, both ways, so a link opens the
+ * Where each location lives in Dropsea's routes, both ways, so a link opens the
  * place it names and every place has a link: `/files?uri=…` (a folder on this
  * device, by its URI), `/cloud`, `/photos`, `/albums`, `/albums/[id]` and
  * `/trash`.

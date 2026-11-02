@@ -10,7 +10,7 @@ import type { PlatformPlace } from '@oxy.so/bloom/platform-surface';
 
 /**
  * A place: one of the platform's (the home, its standard folders, a volume),
- * or, where the platform has none, the folder `expo-file-system` gives Stash
+ * or, where the platform has none, the folder `expo-file-system` gives Dropsea
  * on this device (`device`).
  */
 export interface LocalPlace {
@@ -25,7 +25,7 @@ export function normalizeUri(uri: string): string {
   try {
     decoded = decodeURI(uri);
   } catch (error) {
-    console.warn('Stash read a file URI it cannot decode; it is compared as written', {
+    console.warn('Dropsea read a file URI it cannot decode; it is compared as written', {
       uri,
       error,
     });

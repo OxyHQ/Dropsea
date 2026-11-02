@@ -1,4 +1,4 @@
-import type { Album } from '@stash/shared-types';
+import type { Album } from '@dropsea/shared-types';
 import { useAlbumActions } from '@/hooks/use-album-actions';
 import { useFileActions } from '@/hooks/use-file-actions';
 import { useTransfers } from '@/hooks/use-transfers';
@@ -80,7 +80,7 @@ function command(isEnabled: boolean, run: () => void): Command {
  * anything that escaped them, with what was being done.
  */
 function runAsync(action: string, work: () => Promise<unknown>): void {
-  work().catch((error: unknown) => console.warn(`Stash could not ${action}`, error));
+  work().catch((error: unknown) => console.warn(`Dropsea could not ${action}`, error));
 }
 
 /**
@@ -237,7 +237,7 @@ export function useCommands(context: CommandContext) {
     },
 
     /**
-     * Files dropped on the items from any application, Stash among them (`DropZone`): into the
+     * Files dropped on the items from any application, Dropsea among them (`DropZone`): into the
      * folder dropped on, else into the folder shown; nowhere else takes them.
      */
     dropFolderFor: (target: Item | null): string | null => dropFolderFor(location, target),

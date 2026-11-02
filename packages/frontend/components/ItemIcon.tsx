@@ -1,5 +1,5 @@
 /**
- * An item's icon, as Finder draws one: a folder as Stash's folder, an album
+ * An item's icon, as Finder draws one: a folder as Dropsea's folder, an album
  * as a stack of photos, a document as a page with its kind's glyph, or a
  * picture as the picture itself, fitted into the icon's square.
  */

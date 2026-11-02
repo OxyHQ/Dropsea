@@ -12,28 +12,28 @@
 ##   docker compose -f docker-compose.postgres.yml down -v   # wipe (data is disposable)
 ##
 ## Then in packages/backend/.env:
-##   DATABASE_URL=postgres://stash:stash@127.0.0.1:5434/stash_dev
+##   DATABASE_URL=postgres://dropsea:dropsea@127.0.0.1:5434/dropsea_dev
 ##
 
 services:
   postgres:
     image: postgres:17-alpine
-    container_name: stash-postgres-dev
+    container_name: dropsea-postgres-dev
     restart: unless-stopped
     environment:
-      POSTGRES_USER: stash
-      POSTGRES_PASSWORD: stash
-      POSTGRES_DB: stash_dev
+      POSTGRES_USER: dropsea
+      POSTGRES_PASSWORD: dropsea
+      POSTGRES_DB: dropsea_dev
     ports:
       - '127.0.0.1:5434:5432'
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U stash -d stash_dev']
+      test: ['CMD-SHELL', 'pg_isready -U dropsea -d dropsea_dev']
       interval: 5s
       timeout: 5s
       retries: 10
       start_period: 10s
     volumes:
-      - stash-postgres-data:/var/lib/postgresql/data
+      - dropsea-postgres-data:/var/lib/postgresql/data
 
 volumes:
-  stash-postgres-data:
+  dropsea-postgres-data:

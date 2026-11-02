@@ -1,5 +1,5 @@
 /**
- * Names as Stash compares, finds, checks and makes them: Finder's order (case
+ * Names as Dropsea compares, finds, checks and makes them: Finder's order (case
  * and accents aside, runs of digits by their value), the rules a local name
  * must keep, and the free name a new folder or a download takes.
  */

@@ -1,7 +1,7 @@
-import type { Album } from '@stash/shared-types';
+import type { Album } from '@dropsea/shared-types';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useViewer } from '@/hooks/use-viewer';
-import { getAlbum, listAlbumItems, listAlbums } from '@/lib/stash-api';
+import { getAlbum, listAlbumItems, listAlbums } from '@/lib/dropsea-api';
 
 /** The query key of a person's albums, which a change to any album invalidates. */
 export function albumsKey(userId: string | null) {

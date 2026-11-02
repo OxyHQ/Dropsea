@@ -28,19 +28,19 @@ jobs:
       postgres:
         image: postgres:17-alpine
         env:
-          POSTGRES_USER: stash
-          POSTGRES_PASSWORD: stash
-          POSTGRES_DB: stash_test
+          POSTGRES_USER: dropsea
+          POSTGRES_PASSWORD: dropsea
+          POSTGRES_DB: dropsea_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U stash -d stash_test"
+          --health-cmd "pg_isready -U dropsea -d dropsea_test"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
       CI: '1'
-      DATABASE_URL: postgres://stash:stash@127.0.0.1:5432/stash_test
+      DATABASE_URL: postgres://dropsea:dropsea@127.0.0.1:5432/dropsea_test
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
@@ -58,7 +58,7 @@ jobs:
         run: bun run test
       - name: Apply the migrations
         working-directory: packages/backend
-        run: bun run db:migrate --target-database=stash_test
+        run: bun run db:migrate --target-database=dropsea_test
       - name: Run the backend tests
         working-directory: packages/backend
         run: bun run test

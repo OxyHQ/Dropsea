@@ -1,6 +1,6 @@
 /**
  * The person's files on this device, through `expo-file-system`, the one API
- * every platform Stash runs on implements for its own files (OxyOS, iOS,
+ * every platform Dropsea runs on implements for its own files (OxyOS, iOS,
  * Android). Where none does (a browser), `hasLocalFiles()` is false and
  * nothing here is called.
  *
@@ -13,15 +13,15 @@ import { type LocalItem, localItem } from '@/lib/items';
 import { type NameProblem, nameProblem } from '@/lib/names';
 import type { FileProblem } from '@/lib/strings';
 
-/** The platform implements `expo-file-system` (its native module is there); it never changes while Stash runs. */
+/** The platform implements `expo-file-system` (its native module is there); it never changes while Dropsea runs. */
 const IS_AVAILABLE = requireOptionalNativeModule('FileSystem') !== null;
 
-/** Whether this platform has files of its own that Stash can browse. */
+/** Whether this platform has files of its own that Dropsea can browse. */
 export function hasLocalFiles(): boolean {
   return IS_AVAILABLE;
 }
 
-/** The folder `expo-file-system` gives Stash on this device, for a platform with no places of its own. */
+/** The folder `expo-file-system` gives Dropsea on this device, for a platform with no places of its own. */
 export function deviceFolderUri(): string {
   return Paths.document.uri;
 }
@@ -76,7 +76,7 @@ function itemOf(entry: Directory | File): LocalItem {
 
 /** Why the file system refused: the item went, or something it said. */
 function problemOf(error: unknown, entry: Directory | File, action: string): FileProblem {
-  console.warn(`Stash could not ${action}`, { uri: entry.uri, error });
+  console.warn(`Dropsea could not ${action}`, { uri: entry.uri, error });
   return entry.exists ? 'io' : 'not-found';
 }
 
@@ -183,7 +183,7 @@ export async function copyItems(
 }
 
 /**
- * The items at `file://` URIs dropped on Stash (by another application or Stash itself), each
+ * The items at `file://` URIs dropped on Dropsea (by another application or Dropsea itself), each
  * from one look at it; a URI that names nothing there now is passed over.
  */
 export function itemsAtUris(uris: readonly string[]): LocalItem[] {

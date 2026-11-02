@@ -1,7 +1,7 @@
 import { useAuth } from '@oxy.so/services/ui/client';
 
 /**
- * Who is using Stash: the signed-in person whose Oxy Files and albums it
+ * Who is using Dropsea: the signed-in person whose Oxy Files and albums it
  * shows, once their session can call private APIs.
  */
 export function useViewer(): {
@@ -17,7 +17,7 @@ export function useViewer(): {
     isSignedIn: isAuthenticated && canUsePrivateApi && userId !== null,
     isResolving: !isAuthResolved,
     signIn: () => {
-      signIn().catch((error: unknown) => console.warn('Stash could not start signing in', error));
+      signIn().catch((error: unknown) => console.warn('Dropsea could not start signing in', error));
     },
   };
 }

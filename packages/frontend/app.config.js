@@ -1,13 +1,13 @@
-// Stash's Expo config. The icon is Stash's own (assets/images, from the icon
+// Dropsea's Expo config. The icon is Dropsea's own (assets/images, from the icon
 // set the owner gave); a development build sits next to the production app on
 // the same device with APP_VARIANT=development.
 const IS_DEV = process.env.APP_VARIANT === 'development';
 
 module.exports = {
   expo: {
-    name: IS_DEV ? 'Stash (Dev)' : 'Stash',
-    slug: 'stash',
-    scheme: 'stash',
+    name: IS_DEV ? 'Dropsea (Dev)' : 'Dropsea',
+    slug: 'dropsea',
+    scheme: 'dropsea',
     version: '0.1.0',
     orientation: 'default',
     icon: './assets/images/icon.png',
@@ -18,11 +18,11 @@ module.exports = {
     },
     ios: {
       supportsTablet: true,
-      bundleIdentifier: IS_DEV ? 'so.oxy.stash.dev' : 'so.oxy.stash',
+      bundleIdentifier: IS_DEV ? 'so.oxy.dropsea.dev' : 'so.oxy.dropsea',
       icon: './assets/images/icon.png',
     },
     android: {
-      package: IS_DEV ? 'so.oxy.stash.dev' : 'so.oxy.stash',
+      package: IS_DEV ? 'so.oxy.dropsea.dev' : 'so.oxy.dropsea',
       adaptiveIcon: {
         foregroundImage: './assets/images/icon_foreground.png',
         backgroundImage: './assets/images/icon_background.png',

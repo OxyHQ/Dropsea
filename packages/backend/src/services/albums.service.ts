@@ -4,7 +4,7 @@
  * someone else's alike, so an id reveals nothing about another person.
  */
 
-import type { Album, AlbumItem, AlbumItemsPage } from '@stash/shared-types';
+import type { Album, AlbumItem, AlbumItemsPage } from '@dropsea/shared-types';
 import { and, count, desc, eq, inArray, lt, max } from 'drizzle-orm';
 import { getDb } from '../db/postgres';
 import { albumItems, albums } from '../db/schema';
@@ -129,7 +129,7 @@ export async function updateAlbum(
 
 /**
  * Delete an album and its items. The photos stay in Oxy Files: the person's
- * client unlinks them from Stash, since the link is theirs.
+ * client unlinks them from Dropsea, since the link is theirs.
  */
 export async function deleteAlbum(userId: string, albumId: string): Promise<void> {
   await ownedAlbum(userId, albumId);
@@ -165,7 +165,7 @@ export async function listItems(
 }
 
 /**
- * Add photos the caller has uploaded and linked to Stash. Adding one already
+ * Add photos the caller has uploaded and linked to Dropsea. Adding one already
  * in the album returns its existing item, so a retried request is harmless.
  * An id that is not the caller's own readable image comes back in
  * `rejectedAssetIds`, with no reason.

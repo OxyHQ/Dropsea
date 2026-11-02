@@ -28,7 +28,7 @@ let transferNumber = 0;
 /**
  * Moving files between this device and Oxy Files, with their progress in one
  * toast per transfer: uploading what is on the device (or what the person
- * picks, where Stash cannot browse the device), and downloading into a folder
+ * picks, where Dropsea cannot browse the device), and downloading into a folder
  * here without replacing anything there.
  */
 export function useTransfers() {
@@ -68,7 +68,7 @@ export function useTransfers() {
           state.fraction = 1;
           assetIds[index] = uploaded.file.id;
         } catch (error) {
-          console.warn('Stash could not upload a file to Oxy Files', { name: item.name, error });
+          console.warn('Dropsea could not upload a file to Oxy Files', { name: item.name, error });
           state.fraction = 1;
           toast.error(strings.transfers.uploadFailed(item.name));
         }
@@ -100,9 +100,9 @@ export function useTransfers() {
       );
     },
 
-    /** Files the person picks with the system's picker, where Stash cannot browse the device. */
+    /** Files the person picks with the system's picker, where Dropsea cannot browse the device. */
     async uploadPicked(): Promise<string[]> {
-      // Loaded when used: a platform whose files Stash browses never asks for the picker.
+      // Loaded when used: a platform whose files Dropsea browses never asks for the picker.
       const { getDocumentAsync } = await import('expo-document-picker');
       const picked = await getDocumentAsync({ multiple: true, copyToCacheDirectory: true });
       if (picked.canceled) return [];
@@ -122,7 +122,7 @@ export function useTransfers() {
 
     /**
      * Oxy Files items into a folder on this device, each under a name free
-     * there. Where Stash has no files on this device, the system opens each
+     * there. Where Dropsea has no files on this device, the system opens each
      * file's address instead (a browser downloads or shows it).
      */
     async download(items: readonly Downloadable[], folder: { uri: string; name: string } | null) {
@@ -132,7 +132,7 @@ export function useTransfers() {
           try {
             await Linking.openURL(await oxyServices.assets.url(item.assetId));
           } catch (error) {
-            console.warn('Stash could not open a file from Oxy Files', {
+            console.warn('Dropsea could not open a file from Oxy Files', {
               assetId: item.assetId,
               error,
             });
@@ -167,7 +167,7 @@ export function useTransfers() {
           });
           downloaded++;
         } catch (error) {
-          console.warn('Stash could not download a file from Oxy Files', { step, error });
+          console.warn('Dropsea could not download a file from Oxy Files', { step, error });
           toast.error(strings.transfers.downloadFailed(items[index]?.name ?? step.fileName));
         }
         if (state) state.fraction = 1;
