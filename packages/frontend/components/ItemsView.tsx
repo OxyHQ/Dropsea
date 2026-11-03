@@ -47,7 +47,7 @@ import { usePlatformDrag, usePlatformSurfaces } from '@oxy.so/bloom/platform-sur
 import { useTheme } from '@oxy.so/bloom/theme';
 import { Text } from '@oxy.so/bloom/typography';
 import { useItemAccessibilityFocus, useMeasuredSizeClass } from '@oxy.so/bloom/hooks';
-import { useWindow } from '@oxy.so/bloom/window';
+import { ACCEPTS_FIRST_MOUSE, useWindow } from '@oxy.so/bloom/window';
 import {
   type ComponentRef,
   type ReactNode,
@@ -772,6 +772,9 @@ export function ItemsView({
           // keys (the arrows, Space, Return, type-select) act within it.
           accessible
           focusable
+          // It takes the click that activates its window, as Finder's views do: an
+          // item in an inactive window is selected, or dragged, in one gesture.
+          {...ACCEPTS_FIRST_MOUSE}
           accessibilityRole="list"
           accessibilityLabel={label}
           onLayout={handleLayout}
