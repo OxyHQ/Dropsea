@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.27@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
+# syntax=docker/dockerfile:1.28@sha256:bb22d9815c728170f72750f4e5b0d672e06176142e1d602c7e66c050100b7e5b
 #
 # Dropsea backend image (@dropsea/backend), the shape of Willo's backend image.
 #
@@ -18,7 +18,7 @@
 # tag; bumping one means a new tag AND its digest.
 
 # ── Stage 1: build (install deps, type-gate the backend) ────────────────────
-FROM oven/bun:1.4.3-alpine@sha256:629e17411f1f129dbec3af78d5af9c9f2a937435c80349437206c6b0b7422373 AS builder
+FROM oven/bun:1.4.4-alpine@sha256:4cf82f5686b196504fe119db3fcd9185b191f82ece82c40680e597228ec6070a AS builder
 WORKDIR /app
 
 COPY package.json bun.lock bunfig.toml ./
@@ -33,7 +33,7 @@ COPY packages/backend/src/ packages/backend/src/
 RUN cd packages/backend && bun run typecheck
 
 # ── Stage 2: runtime ──────────────────────────────────────────────────────
-FROM oven/bun:1.4.3-alpine@sha256:629e17411f1f129dbec3af78d5af9c9f2a937435c80349437206c6b0b7422373 AS runtime
+FROM oven/bun:1.4.4-alpine@sha256:4cf82f5686b196504fe119db3fcd9185b191f82ece82c40680e597228ec6070a AS runtime
 WORKDIR /app
 
 RUN addgroup -g 1001 -S appgroup && adduser -u 1001 -S appuser -G appgroup
