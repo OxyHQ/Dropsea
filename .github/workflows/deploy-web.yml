@@ -1,0 +1,127 @@
+# Deploys the web app to dropsea.net: the Expo web export, served by the Worker
+# packages/frontend/wrangler.toml declares (its name, its assets, its one
+# hostname).
+name: Deploy web
+
+on:
+  # After CI passes on a push to main, never alongside it: a commit whose CI
+  # goes red never ships (~/Oxy/docs/infra-and-deploys.md, the 20-job ceiling).
+  # Every push to main runs CI, so every one that passes deploys; a change that
+  # touches only the backend redeploys the same app, which costs a few minutes
+  # and nothing else.
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  # Releases main's head, and only once CI succeeded on it.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # The commit under release: the one CI passed on, or main's head for a dispatch.
+  RELEASE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+jobs:
+  deploy:
+    name: Build and deploy dropsea.net
+    # A CI run of a push to main in this repository that succeeded, or a
+    # dispatch on main. A fork's or a pull request's CI never reaches here.
+    if: >-
+      github.ref == 'refs/heads/main' && (
+        github.event_name == 'workflow_dispatch' || (
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.event == 'push' &&
+          github.event.workflow_run.head_branch == 'main' &&
+          github.event.workflow_run.head_repository.full_name == github.repository
+        )
+      )
+    # One deploy at a time, never cancelled half-way. On the job, so a run the
+    # release check below skips never waits here.
+    concurrency:
+      group: deploy-web
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      actions: read
+    env:
+      # Public, compile-time values: the registered Oxy client id and the Oxy
+      # application photos are linked to (packages/frontend/.env.example). The
+      # API URLs are lib/config.ts's defaults: a variable set here but empty
+      # would be built in as '' and replace them.
+      EXPO_PUBLIC_OXY_CLIENT_ID: ${{ vars.EXPO_PUBLIC_OXY_CLIENT_ID }}
+      EXPO_PUBLIC_DROPSEA_APPLICATION_ID: ${{ vars.EXPO_PUBLIC_DROPSEA_APPLICATION_ID }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      # An app built without its client id cannot sign anyone in: refuse to
+      # deploy one rather than publish a page that fails every call.
+      - name: The app's Oxy registration is configured
+        run: |
+          for name in EXPO_PUBLIC_OXY_CLIENT_ID EXPO_PUBLIC_DROPSEA_APPLICATION_ID; do
+            [ -n "$(printenv "$name")" ] || { echo "::error::The repository variable $name is not set"; exit 1; }
+          done
+
+      # A dispatch has no CI run behind it: it releases main's head only once a
+      # CI run of that push succeeded.
+      - name: CI passed on the dispatched commit
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          set -euo pipefail
+          passed=$(gh run list -R "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$RELEASE_SHA" --event push \
+            --json conclusion --jq '[.[] | select(.conclusion == "success")] | length')
+          [ "$passed" -gt 0 ] || { echo "::error::CI has not succeeded on $RELEASE_SHA"; exit 1; }
+
+      # CI runs can finish out of order. An older commit is held back only when
+      # main's newer head has a CI run of its own (queued, running or passed),
+      # whose deploy will release it; otherwise this one ships, so a commit no
+      # workflow ran for (a bot's merge) never strands the last tested one.
+      - name: This is the newest commit with a release coming
+        id: newest
+        run: |
+          set -euo pipefail
+          head=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+          if [ "$head" = "$RELEASE_SHA" ]; then
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          pending=$(gh run list -R "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$head" --event push \
+            --json status,conclusion --jq '[.[] | select(.status != "completed" or .conclusion == "success")] | length')
+          if [ "$pending" -gt 0 ]; then
+            echo "main's head $head has its own CI run; it will release this commit too."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        if: steps.newest.outputs.release == 'true'
+        with:
+          ref: ${{ env.RELEASE_SHA }}
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        if: steps.newest.outputs.release == 'true'
+        with:
+          bun-version-file: package.json
+      - if: steps.newest.outputs.release == 'true'
+        run: bun install --frozen-lockfile
+      - name: Export the web app
+        if: steps.newest.outputs.release == 'true'
+        working-directory: packages/frontend
+        run: bun run export:web
+        env:
+          NODE_ENV: production
+      # `bunx wrangler` with a pinned major, never `cloudflare/wrangler-action`:
+      # the action looks for a lockfile beside packages/frontend, finds none
+      # (it is at the root) and falls back to npm, which cannot resolve the
+      # workspace. The Worker is created on its first deploy, and claims
+      # dropsea.net from wrangler.toml.
+      - name: Deploy the Worker
+        if: steps.newest.outputs.release == 'true'
+        working-directory: packages/frontend
+        run: bunx wrangler@4 deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

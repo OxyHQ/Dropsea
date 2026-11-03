@@ -15,3 +15,7 @@ bun run --cwd packages/backend db:migrate --target-database=dropsea_dev
 bun run --cwd packages/backend dev
 bun run test
 ```
+
+The web app deploys to https://dropsea.net from `main` (`.github/workflows/deploy-web.yml`):
+the Expo web export, served by the Worker `packages/frontend/wrangler.toml` declares. It needs
+the repository variables `EXPO_PUBLIC_OXY_CLIENT_ID` and `EXPO_PUBLIC_DROPSEA_APPLICATION_ID`.

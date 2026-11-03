@@ -1,0 +1,25 @@
+# Dropsea's web app: the Expo web export, served by a Worker at dropsea.net.
+#
+# A Worker, not a Pages project: a Pages project always also answers on
+# `<project>.pages.dev`, a second copy of the app on an origin no API allows.
+# `workers_dev = false` and `preview_urls = false` leave dropsea.net as the only
+# name that reaches it.
+name = "dropsea"
+main = "worker/index.js"
+compatibility_date = "2026-10-13"
+workers_dev = false
+preview_urls = false
+
+# `web.output: "single"`: one index.html and hashed assets. A navigation to any
+# path gets index.html without running the Worker (navigations prefer assets
+# from compatibility date 2025-04-01), so a deep link opens the app; any other
+# request that matches no file runs `worker/index.js`, which says 404.
+[assets]
+directory = "./dist"
+not_found_handling = "single-page-application"
+
+# Cloudflare writes the hostname's DNS record itself; dropsea.net must have no
+# other record for it.
+[[routes]]
+pattern = "dropsea.net"
+custom_domain = true
