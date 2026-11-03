@@ -21,15 +21,15 @@ Write straightforward code that another engineer can read at 2am. No clever tric
 
 ### Naming
 
-| Kind | Convention |
-|---|---|
-| Variables, functions | `camelCase` |
-| Types, interfaces, classes | `PascalCase` |
-| Constants | `UPPER_SNAKE_CASE` |
-| Utility files | `kebab-case` |
-| React components | `PascalCase` |
-| Booleans | `is`, `has`, `should`, `can` prefix |
-| Event handlers | `handle` prefix |
+| Kind                       | Convention                          |
+| -------------------------- | ----------------------------------- |
+| Variables, functions       | `camelCase`                         |
+| Types, interfaces, classes | `PascalCase`                        |
+| Constants                  | `UPPER_SNAKE_CASE`                  |
+| Utility files              | `kebab-case`                        |
+| React components           | `PascalCase`                        |
+| Booleans                   | `is`, `has`, `should`, `can` prefix |
+| Event handlers             | `handle` prefix                     |
 
 No single letter names outside loop indices. No abbreviations unless universally understood.
 
@@ -46,15 +46,15 @@ No single letter names outside loop indices. No abbreviations unless universally
 
 Effects synchronise with external systems. They are not for transforming data or responding to events.
 
-| Instead of | Do this |
-|---|---|
-| `useEffect` + `setState` for derived state | Calculate it during render |
-| `useEffect` for expensive computation | `useMemo` |
-| `useEffect` to reset state on a prop change | `key` on the component |
-| `useEffect` watching state to react to an event | Put the logic in the event handler |
-| Chained effects | One calculation, or the event handler |
-| `useEffect` + `addEventListener` for a store | `useSyncExternalStore` |
-| Raw `useEffect` fetching | React Query or SWR |
+| Instead of                                      | Do this                               |
+| ----------------------------------------------- | ------------------------------------- |
+| `useEffect` + `setState` for derived state      | Calculate it during render            |
+| `useEffect` for expensive computation           | `useMemo`                             |
+| `useEffect` to reset state on a prop change     | `key` on the component                |
+| `useEffect` watching state to react to an event | Put the logic in the event handler    |
+| Chained effects                                 | One calculation, or the event handler |
+| `useEffect` + `addEventListener` for a store    | `useSyncExternalStore`                |
+| Raw `useEffect` fetching                        | React Query or SWR                    |
 
 If you do fetch in an Effect, use a cleanup function with an `ignore` flag or you will ship a race condition. Guard app initialisation with a module level flag: Effects run twice in StrictMode.
 
@@ -137,5 +137,5 @@ Dropsea organises a person's photos and files; it never stores bytes. Every file
 
 - **The person's own client uploads and links the file to Dropsea** (`oxy.assets.upload`, then `oxy.assets.link` to this application). That link is the person's consent; without it the backend cannot read the file (`files:linked:read`, oxy ADR 0021), and Dropsea refuses the item.
 - **The backend never mints a URL for a client.** It returns asset ids; each client resolves them with its own session (`oxy.assets.urls`), so a private photo is only ever readable by someone Oxy allows.
-- **Seed colours are worked out once, here, when an item is added** (`@oxy.so/color` over a 48×48 thumbnail), and travel with the item. A screen showing the photo themes itself without reading pixels.
+- **Seed colours are worked out once, here, when an item is added** (`@oxy.so/bloom/color-engine` over a 48×48 thumbnail), and travel with the item. A screen showing the photo themes itself without reading pixels.
 - Size and capture time are read from the bytes at the same moment (Oxy Files extracts its own metadata after the upload returns, and keeps no capture time) and copied onto the row, so a page of items needs no call per photo.

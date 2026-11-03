@@ -5,7 +5,7 @@
  * showing one themes itself without reading pixels.
  */
 
-import { hexFromArgb, argbFromRgb, seedsFromImagePixels } from '@oxy.so/color';
+import { hexFromArgb, seedsFromRgbBytes } from '@oxy.so/bloom/color-engine';
 import type { OxyServer } from '@oxy.so/core/server';
 import exifReader from 'exif-reader';
 import sharp, { type Metadata } from 'sharp';
@@ -76,13 +76,7 @@ export async function readPhoto(
     .removeAlpha()
     .raw()
     .toBuffer();
-  const pixels: number[] = [];
-  for (let offset = 0; offset + 2 < thumbnail.length; offset += 3) {
-    pixels.push(
-      argbFromRgb(thumbnail[offset] ?? 0, thumbnail[offset + 1] ?? 0, thumbnail[offset + 2] ?? 0),
-    );
-  }
-  const seeds = seedsFromImagePixels(pixels).slice(0, SEEDS_KEPT).map(hexFromArgb);
+  const seeds = seedsFromRgbBytes(thumbnail).slice(0, SEEDS_KEPT).map(hexFromArgb);
 
   return { width, height, seeds, takenAt: takenAtFromExif(assetId, metadata.exif) };
 }

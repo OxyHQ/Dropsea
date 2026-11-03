@@ -45,9 +45,9 @@ export const albums = pgTable(
  * rows; the same asset twice in one album is refused (`unique` below), so
  * adding a batch again is idempotent.
  *
- * `seeds` are `#rrggbb` strings, best first (`@oxy.so/color`). `taken_at` is
- * the photo's EXIF `DateTimeOriginal` when it has one: Oxy Files does not keep
- * a capture time.
+ * `seeds` are `#rrggbb` strings, best first (`@oxy.so/bloom/color-engine`).
+ * `taken_at` is the photo's EXIF `DateTimeOriginal` when it has one: Oxy Files
+ * does not keep a capture time.
  */
 export const albumItems = pgTable(
   'album_items',
