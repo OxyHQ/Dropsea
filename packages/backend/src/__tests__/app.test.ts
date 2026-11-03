@@ -36,3 +36,15 @@ test('is live and, with every migration applied, ready', async () => {
 test('refuses /albums with no session', async () => {
   expect((await fetch(`${base}/albums`)).status).toBe(401);
 });
+
+test('lets the web app at dropsea.net call it cross-origin, and no unlisted origin', async () => {
+  const preflight = (origin: string) =>
+    fetch(`${base}/albums`, {
+      method: 'OPTIONS',
+      headers: { Origin: origin, 'Access-Control-Request-Method': 'GET' },
+    });
+  const allowed = await preflight('https://dropsea.net');
+  expect(allowed.headers.get('access-control-allow-origin')).toBe('https://dropsea.net');
+  const refused = await preflight('https://dropsea.example');
+  expect(refused.headers.get('access-control-allow-origin')).toBeNull();
+});

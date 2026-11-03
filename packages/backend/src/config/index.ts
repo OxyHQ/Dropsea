@@ -16,8 +16,9 @@ const envSchema = z.object({
   // through it: no local signing secret, no storage credentials.
   OXY_API_URL: z.string().url().default('https://api.oxy.so'),
   // Comma-separated browser origins allowed besides the *.oxy.so family
-  // createOxyCors always allows.
-  CORS_ORIGINS: z.string().optional(),
+  // createOxyCors always allows. Defaults to the web app's own origin,
+  // https://dropsea.net, which is not in that family; a value replaces it.
+  CORS_ORIGINS: z.string().default('https://dropsea.net'),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -32,9 +33,7 @@ export const config = {
   port: env.PORT,
   databaseUrl: env.DATABASE_URL,
   oxyApiUrl: env.OXY_API_URL,
-  corsOrigins: env.CORS_ORIGINS
-    ? env.CORS_ORIGINS.split(',')
-        .map((origin) => origin.trim())
-        .filter(Boolean)
-    : [],
+  corsOrigins: env.CORS_ORIGINS.split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean),
 };

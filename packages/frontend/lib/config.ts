@@ -4,8 +4,7 @@
 export const OXY_API_URL = process.env.EXPO_PUBLIC_OXY_API_URL ?? 'https://api.oxy.so';
 
 /** Dropsea's own backend (packages/backend): albums. */
-export const DROPSEA_API_URL =
-  process.env.EXPO_PUBLIC_DROPSEA_API_URL ?? 'https://api.stash.oxy.so';
+export const DROPSEA_API_URL = process.env.EXPO_PUBLIC_DROPSEA_API_URL ?? 'https://api.dropsea.net';
 
 /** Dropsea's Oxy client id (its ApplicationCredential publicKey). */
 export const OXY_CLIENT_ID = process.env.EXPO_PUBLIC_OXY_CLIENT_ID ?? '';
