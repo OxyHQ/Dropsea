@@ -710,6 +710,11 @@ export function ItemsView({
       <ContextMenuTrigger asChild label={label} style={{ flex: 1, alignSelf: 'stretch' }}>
         <View
           className="flex-1 select-none"
+          // The items are one control of the keyboard's, as Finder's list is one
+          // stop of the window's key view loop: Tab reaches the list, and its
+          // keys (the arrows, Space, Return, type-select) act within it.
+          accessible
+          focusable
           accessibilityRole="list"
           accessibilityLabel={label}
           onLayout={handleLayout}
