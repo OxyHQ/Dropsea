@@ -3,9 +3,13 @@
  * in the Trash, where it was). It draws itself where the list places it and
  * again only when something it shows changes: a list's selection moving
  * redraws the two rows it moved between, not every row.
+ *
+ * A screen reader reads it as VoiceOver reads a Finder row: its name, then
+ * what its columns say (where it was, its date, size and kind), whichever of
+ * them the window is wide enough to draw.
  */
 import { Text } from '@oxy.so/bloom/typography';
-import { memo } from 'react';
+import { type ComponentRef, memo } from 'react';
 import { type AccessibilityActionInfo, View } from 'react-native';
 import { ItemIcon } from '@/components/ItemIcon';
 import { COLUMN_WIDTHS, type ListColumns } from '@/components/ListHeader';
@@ -38,6 +42,8 @@ export interface ItemRowProps {
   thumbnailUrl: string | null;
   accessibilityActions: readonly AccessibilityActionInfo[];
   onAccessibilityAction: (item: Item, action: string) => void;
+  /** Its view as it is drawn (null as it goes): what screen-reader focus and a menu opened from the keyboard go to. */
+  onView: (key: string, view: ComponentRef<typeof View> | null) => void;
 }
 
 export const ItemRow = memo(function ItemRow({
@@ -56,6 +62,7 @@ export const ItemRow = memo(function ItemRow({
   thumbnailUrl,
   accessibilityActions,
   onAccessibilityAction,
+  onView,
 }: ItemRowProps) {
   const { strings, locale } = useLocale();
   const kind = itemKind(item);
@@ -73,12 +80,31 @@ export const ItemRow = memo(function ItemRow({
   const textClass = isAccented ? 'text-primary-foreground' : 'text-foreground';
   const secondaryClass = isAccented ? 'text-primary-foreground' : 'text-text-secondary';
   const iconSize = height > 30 ? 28 : 18;
+  const dateText = date === null ? '--' : formatDate(date, Date.now(), locale, strings);
+  const sizeText =
+    item.source === 'album'
+      ? strings.photoCount(item.itemCount)
+      : item.size === null
+        ? '--'
+        : formatSize(item.size, strings.units, locale);
+  const kindText = strings.kinds[kind];
+  // What the row's columns say, in their order, as the reader says them after its name.
+  const columnsText = [
+    hasOriginColumn ? origin : null,
+    columns.date && date !== null ? dateText : null,
+    columns.size && sizeText !== '--' ? sizeText : null,
+    columns.kind ? kindText : null,
+  ]
+    .filter((text) => text !== null && text !== '')
+    .join(', ');
   return (
     <View
+      ref={(view) => onView(item.key, view)}
       testID={`item-${item.name}`}
       accessible
       accessibilityRole="listitem"
       accessibilityLabel={item.name}
+      accessibilityValue={columnsText === '' ? undefined : { text: columnsText }}
       aria-selected={isSelected}
       aria-disabled={isDimmed}
       accessibilityActions={accessibilityActions}
@@ -131,7 +157,7 @@ export const ItemRow = memo(function ItemRow({
           className={`ps-2 ${secondaryClass}`}
           style={{ width: COLUMN_WIDTHS.date }}
         >
-          {date === null ? '--' : formatDate(date, Date.now(), locale, strings)}
+          {dateText}
         </Text>
       ) : null}
       {columns.size ? (
@@ -142,11 +168,7 @@ export const ItemRow = memo(function ItemRow({
           className={`ps-2 ${secondaryClass}`}
           style={{ width: COLUMN_WIDTHS.size }}
         >
-          {item.source === 'album'
-            ? strings.photoCount(item.itemCount)
-            : item.size === null
-              ? '--'
-              : formatSize(item.size, strings.units, locale)}
+          {sizeText}
         </Text>
       ) : null}
       {columns.kind ? (
@@ -157,7 +179,7 @@ export const ItemRow = memo(function ItemRow({
           className={`ps-2 ${secondaryClass}`}
           style={{ width: COLUMN_WIDTHS.kind }}
         >
-          {strings.kinds[kind]}
+          {kindText}
         </Text>
       ) : null}
     </View>

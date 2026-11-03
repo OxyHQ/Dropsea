@@ -9,7 +9,7 @@
  * row below if it must be, as Finder shows it.
  */
 import { Text } from '@oxy.so/bloom/typography';
-import { memo } from 'react';
+import { type ComponentRef, memo } from 'react';
 import {
   type AccessibilityActionEvent,
   type AccessibilityActionInfo,
@@ -46,6 +46,8 @@ export interface ItemCellProps {
   thumbnailUrl: string | null;
   accessibilityActions: readonly AccessibilityActionInfo[];
   onAccessibilityAction: (item: Item, action: string) => void;
+  /** Its view as it is drawn (null as it goes): what screen-reader focus and a menu opened from the keyboard go to. */
+  onView: (key: string, view: ComponentRef<typeof View> | null) => void;
 }
 
 export const ItemCell = memo(function ItemCell({
@@ -64,9 +66,11 @@ export const ItemCell = memo(function ItemCell({
   thumbnailUrl,
   accessibilityActions,
   onAccessibilityAction,
+  onView,
 }: ItemCellProps) {
   const kind = itemKind(item);
   const accessibility = {
+    ref: (view: ComponentRef<typeof View> | null) => onView(item.key, view),
     testID: `item-${item.name}`,
     // One element for assistive technology, its icon and name read as it.
     accessible: true,

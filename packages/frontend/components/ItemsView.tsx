@@ -22,6 +22,14 @@
  *
  * Items the window cannot select now (the file chooser's, that the request
  * cannot take) are drawn dimmed.
+ *
+ * From the keyboard the items are one control, as Finder's list is one stop of
+ * the window's key view loop: the arrows move the selection within it, and the
+ * screen reader says each item the selection moves to (its focus goes to the
+ * item, the keyboard's stays on the list). The menu opens from the keyboard (the
+ * platform's Menu key, Shift+F10) or a screen reader's action through the
+ * context menu's `longpress`, for the selection, below the item the keyboard is
+ * at, as Finder's Control-Return opens it at the selected row.
  */
 import {
   ContextMenu,
@@ -38,7 +46,7 @@ import { isCommandKey } from '@oxy.so/bloom/kbd';
 import { usePlatformDrag, usePlatformSurfaces } from '@oxy.so/bloom/platform-surface';
 import { useTheme } from '@oxy.so/bloom/theme';
 import { Text } from '@oxy.so/bloom/typography';
-import { useMeasuredSizeClass } from '@oxy.so/bloom/hooks';
+import { useItemAccessibilityFocus, useMeasuredSizeClass } from '@oxy.so/bloom/hooks';
 import { useWindow } from '@oxy.so/bloom/window';
 import {
   type ComponentRef,
@@ -300,8 +308,26 @@ export function ItemsView({
   const gesture = useRef<Gesture | null>(null);
   const dragging = useRef<Drag | null>(null);
   const longPress = useRef<ReturnType<typeof setTimeout> | null>(null);
-  /** The item the next menu opens for, set by the press that opens it. */
-  const menuTarget = useRef<string | null>(null);
+  /**
+   * The item the next menu opens for (null: the place), set by the press that
+   * opens it; none when no press asked, and the keyboard or an assistive
+   * technology opens it, for the selection.
+   */
+  const menuTarget = useRef<{ key: string | null } | null>(null);
+  /** The view the open menu hangs from, and screen-reader focus goes back to as it closes. */
+  const menuView = useRef<ComponentRef<typeof View> | null>(null);
+  const list = useRef<ComponentRef<typeof View> | null>(null);
+
+  // The items' views as they are drawn, by key: the screen reader's focus
+  // follows the item the keys (or a press) moved to, as VoiceOver says each row
+  // of Finder's list the selection reaches, while the keyboard stays on the list.
+  const focusItem = useItemAccessibilityFocus(selection.focus);
+  const itemViews = useRef(new Map<string, ComponentRef<typeof View>>());
+  const [handleItemView] = useState(() => (key: string, view: ComponentRef<typeof View> | null) => {
+    if (view) itemViews.current.set(key, view);
+    else itemViews.current.delete(key);
+    focusItem(key, view);
+  });
 
   // Where the items' area is in the window, measured as it is laid out (and
   // as a press begins) at the scroll offset then, and moved by how far it has
@@ -369,7 +395,7 @@ export function ItemsView({
       // A menu is for the selection, which the item joins if it is not in it;
       // on the background it is the place's, and nothing stays selected. The
       // press goes on to the menu's trigger, which opens it where it pressed.
-      menuTarget.current = item?.key ?? null;
+      menuTarget.current = { key: item?.key ?? null };
       if (!item) onSelectionChange(() => NO_SELECTION);
       else if (!isSelected(selection, item.key)) onSelectionChange(() => selectOnly(item.key));
       return;
@@ -406,7 +432,35 @@ export function ItemsView({
   // publishes while the selection changes.
   const hasMenus = menus !== null;
   const openMenu = (anchor: ContextMenuAnchor | null) => {
-    setMenu(anchor && hasMenus ? { anchor, key: menuTarget.current } : null);
+    const asked = menuTarget.current;
+    menuTarget.current = null;
+    if (!anchor || !hasMenus) {
+      setMenu(null);
+      return;
+    }
+    if (asked) {
+      menuView.current = list.current;
+      setMenu({ anchor, key: asked.key });
+      return;
+    }
+    // The keyboard or an assistive technology: the selection's menu, below the
+    // item the keyboard is at; with nothing selected, the place's, at the
+    // items' corner.
+    const key = selection.focus ?? selection.keys.at(-1) ?? null;
+    const view = key ? itemViews.current.get(key) : undefined;
+    if (!key || !view) {
+      menuView.current = list.current;
+      const corner = 'x' in anchor ? anchor : { x: anchor.left, y: anchor.top };
+      setMenu({ anchor: corner, key: null });
+      return;
+    }
+    view.measureInWindow((x, y, itemWidth, itemHeight) => {
+      menuView.current = view;
+      setMenu({
+        anchor: { top: y, left: x, right: x + itemWidth, bottom: y + itemHeight },
+        key,
+      });
+    });
   };
 
   const handleGrant = (event: GestureResponderEvent) => {
@@ -430,7 +484,7 @@ export function ItemsView({
       const held = gesture.current;
       if (!held || held.hasMoved) return;
       held.isLongPressed = true;
-      menuTarget.current = held.key;
+      menuTarget.current = { key: held.key };
       const key = held.key;
       if (key && !isSelected(selection, key)) onSelectionChange(() => selectOnly(key));
       openMenu({ x: pageX, y: pageY });
@@ -622,6 +676,7 @@ export function ItemsView({
           thumbnailUrl={thumbnailUrl}
           accessibilityActions={itemActions(item)}
           onAccessibilityAction={handleAccessibilityAction}
+          onView={handleItemView}
         />
       );
     }
@@ -646,6 +701,7 @@ export function ItemsView({
         thumbnailUrl={thumbnailUrl}
         accessibilityActions={itemActions(item)}
         onAccessibilityAction={handleAccessibilityAction}
+        onView={handleItemView}
       />
     );
   };
@@ -706,9 +762,10 @@ export function ItemsView({
   };
 
   return (
-    <ContextMenu anchor={menu?.anchor ?? null} onAnchorChange={openMenu}>
+    <ContextMenu anchor={menu?.anchor ?? null} anchorRef={menuView} onAnchorChange={openMenu}>
       <ContextMenuTrigger asChild label={label} style={{ flex: 1, alignSelf: 'stretch' }}>
         <View
+          ref={list}
           className="flex-1 select-none"
           // The items are one control of the keyboard's, as Finder's list is one
           // stop of the window's key view loop: Tab reaches the list, and its
@@ -844,7 +901,8 @@ export function ItemsView({
           ) : null}
         </View>
       </ContextMenuTrigger>
-      <ContextMenuContent>
+      {/* Named by what it is for, as a screen reader says the menu as it opens. */}
+      <ContextMenuContent label={menuItem?.name ?? label}>
         {menus ? (menuItem ? menus.item(menuItem) : menus.background) : null}
       </ContextMenuContent>
     </ContextMenu>
