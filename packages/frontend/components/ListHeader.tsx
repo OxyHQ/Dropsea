@@ -63,6 +63,8 @@ export function ListHeader({
               : label
           }
           testID={`column-${column}`}
+          // A column header, said as one ("Name, ascending, column header"), as Finder's.
+          accessibilityRole="columnheader"
           tabIndex={-1}
           className="self-start"
         >
@@ -78,6 +80,7 @@ export function ListHeader({
         <Text
           variant="caption-1-medium"
           numberOfLines={1}
+          role="columnheader"
           className="ps-2 text-text-secondary"
           style={{ width: COLUMN_WIDTHS.origin }}
         >
