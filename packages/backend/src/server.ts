@@ -10,9 +10,11 @@ async function main(): Promise<void> {
   await connectPostgres();
 
   // One client for verifying sessions and for reading Oxy Files as Dropsea's
-  // own service identity (the attested task role on ECS).
+  // own service identity (the attested task role on ECS). Session-less reads
+  // carry that identity too, rather than being charged to the source address.
   const oxy = new OxyServer({
     baseURL: config.oxyApiUrl,
+    serviceIdentity: 'when-anonymous',
     workloadCredentials: createAwsWorkloadCredentialProvider(),
   });
   const server = http.createServer(createApp(oxy, createOxyPhotoSource(oxy)));
