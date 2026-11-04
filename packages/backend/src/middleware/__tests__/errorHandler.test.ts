@@ -18,16 +18,16 @@ function oxyError(status: number): OxyApiError {
   return new OxyApiError(UPSTREAM_MESSAGE, { status, code: 'UPSTREAM' });
 }
 
-const failures: Record<string, () => unknown> = {
-  'not-found': () => new NotFoundError('Album not found.'),
-  'oxy-network': () => oxyError(0),
-  'oxy-5xx': () => oxyError(502),
-  'oxy-throttled': () => oxyError(429),
-  'oxy-refused': () => oxyError(403),
-  'oxy-metadata-chunk': () => new ServiceAssetMetadataError(['asset'], [503], oxyError(503)),
-  'oxy-metadata-refused': () => new ServiceAssetMetadataError(['asset'], [403], oxyError(403)),
-  defect: () => new Error(UPSTREAM_MESSAGE),
-};
+const failures = new Map<string, () => Error>([
+  ['not-found', () => new NotFoundError('Album not found.')],
+  ['oxy-network', () => oxyError(0)],
+  ['oxy-5xx', () => oxyError(502)],
+  ['oxy-throttled', () => oxyError(429)],
+  ['oxy-refused', () => oxyError(403)],
+  ['oxy-metadata-chunk', () => new ServiceAssetMetadataError(['asset'], [503], oxyError(503))],
+  ['oxy-metadata-refused', () => new ServiceAssetMetadataError(['asset'], [403], oxyError(403))],
+  ['defect', () => new Error(UPSTREAM_MESSAGE)],
+]);
 
 let server: Server;
 let base: string;
@@ -36,7 +36,7 @@ beforeAll(() => {
   const app = express();
   app.use(express.json());
   app.get('/fail/:kind', async (req) => {
-    const failure = failures[req.params.kind];
+    const failure = failures.get(req.params.kind);
     throw failure ? failure() : new Error('unknown failure kind');
   });
   app.use(unknownRoute);
