@@ -7,7 +7,7 @@ name: Oxy autobump
 
 on:
   schedule:
-    - cron: "43 4 * * *"
+    - cron: '43 4 * * *'
   workflow_dispatch:
 
 permissions: {}
