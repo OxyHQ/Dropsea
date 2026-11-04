@@ -35,10 +35,11 @@ let base: string;
 beforeAll(() => {
   const app = express();
   app.use(express.json());
-  app.get('/fail/:kind', async (req) => {
-    const failure = failures.get(req.params.kind);
-    throw failure ? failure() : new Error('unknown failure kind');
-  });
+  for (const [kind, failure] of failures) {
+    app.get(`/fail/${kind}`, async () => {
+      throw failure();
+    });
+  }
   app.use(unknownRoute);
   app.use(errorHandler);
   server = app.listen(0);
