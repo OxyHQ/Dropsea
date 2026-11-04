@@ -3,12 +3,13 @@ import {
   createOxyAuthMiddleware,
   createOxyCors,
   createOxyRateLimit,
+  createOxySecurityHeaders,
   oxyTrustProxy,
 } from '@oxy.so/core/server';
 import express, { type Express } from 'express';
 import { config } from './config';
 import { assertMigrationsCurrent, checkPostgresHealth } from './db/postgres';
-import { errorHandler } from './middleware/errorHandler';
+import { errorHandler, unknownRoute } from './middleware/errorHandler';
 import { createAlbumsRouter } from './routes/albums.routes';
 import type { PhotoSource } from './services/photos.service';
 import { logger } from './utils/logger';
@@ -23,6 +24,7 @@ export function createApp(oxy: OxyServer, photos: PhotoSource): Express {
   // Before any middleware: `req.ip` is the real client behind the ALB and the
   // Cloudflare proxy, and a forged X-Forwarded-For is never believed.
   app.set('trust proxy', oxyTrustProxy);
+  app.use(createOxySecurityHeaders());
   app.use(createOxyCors({ appOrigins: config.corsOrigins }));
   app.use(express.json());
 
@@ -55,7 +57,8 @@ export function createApp(oxy: OxyServer, photos: PhotoSource): Express {
     createAlbumsRouter(photos),
   );
 
-  // Last: turns a thrown domain error into a typed JSON response.
+  // Last: a path no route serves, then every thrown error, as typed JSON.
+  app.use(unknownRoute);
   app.use(errorHandler);
 
   return app;

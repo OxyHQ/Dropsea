@@ -5,8 +5,9 @@
  * showing one themes itself without reading pixels.
  */
 
+import { Readable } from 'node:stream';
 import { hexFromArgb, seedsFromRgbBytes } from '@oxy.so/bloom/color-engine';
-import type { OxyServer } from '@oxy.so/core/server';
+import { type OxyServer, readResponseBody } from '@oxy.so/core/server';
 import exifReader from 'exif-reader';
 import sharp, { type Metadata } from 'sharp';
 
@@ -37,6 +38,11 @@ const SEEDS_KEPT = 3;
 const MAX_PHOTO_BYTES = 100 * 1024 * 1024;
 /** Downloads in flight at once for one request. */
 const DOWNLOAD_CONCURRENCY = 4;
+/**
+ * How long one download may take to answer, and then how long its body may
+ * take to arrive: a stalled or trickling store cannot hold a request open.
+ */
+const DOWNLOAD_TIMEOUT_MS = 30_000;
 
 /**
  * Size, seeds and capture time from a photo's bytes. `null` when the bytes are
@@ -109,14 +115,57 @@ export function takenAtFromExif(assetId: string, exif: Buffer | undefined): Date
 }
 
 /**
+ * A photo's bytes from the short-lived URL Oxy Files minted for it: at most
+ * `size` bytes, the size Oxy Files recorded for the file, and within
+ * {@link DOWNLOAD_TIMEOUT_MS}. `null` for anything else, logged with the status
+ * only: the URL is a live credential.
+ */
+async function downloadPhoto(
+  assetId: string,
+  url: string,
+  size: number,
+): Promise<Uint8Array | null> {
+  let response: Response;
+  try {
+    response = await fetch(url, { signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) });
+  } catch (error) {
+    console.warn('Dropsea could not download a photo; it is not added', {
+      assetId,
+      error: error instanceof Error ? error.name : String(error),
+    });
+    return null;
+  }
+  if (!response.ok || !response.body) {
+    await response.body?.cancel();
+    console.warn('Dropsea could not download a photo; it is not added', {
+      assetId,
+      status: response.status,
+    });
+    return null;
+  }
+  const body = await readResponseBody(Readable.fromWeb(response.body), {
+    maxBytes: size,
+    timeoutMs: DOWNLOAD_TIMEOUT_MS,
+  });
+  if (body.kind !== 'ok') {
+    console.warn('Dropsea could not download a photo; it is not added', {
+      assetId,
+      outcome: body.kind,
+    });
+    return null;
+  }
+  return new Uint8Array(body.body);
+}
+
+/**
  * The real source: Oxy Files, through Dropsea's own service identity.
  *
- * 1. `metadataByIds` names each file's owner, mime and status; only the
+ * 1. `metadataByIds` names each file's owner, mime, size and status; only the
  *    caller's own live images go on.
  * 2. `linkedDownloadUrls` answers only for files their owner linked to Dropsea
  *    (oxy ADR 0021): that link, made by the person's own client, is their
  *    consent to Dropsea reading the file.
- * 3. Each one is downloaded and read.
+ * 3. Each one is downloaded, bounded by its recorded size, and read.
  */
 export function createOxyPhotoSource(oxy: OxyServer): PhotoSource {
   return {
@@ -143,16 +192,9 @@ export function createOxyPhotoSource(oxy: OxyServer): PhotoSource {
           batch.map(async (download): Promise<PhotoFacts | null> => {
             const asset = images.get(download.id);
             if (!asset) return null;
-            const response = await fetch(download.url);
-            if (!response.ok) {
-              // The status only: the URL is a live credential.
-              console.warn('Dropsea could not download a photo; it is not added', {
-                assetId: asset.id,
-                status: response.status,
-              });
-              return null;
-            }
-            const photo = await readPhoto(asset.id, new Uint8Array(await response.arrayBuffer()));
+            const bytes = await downloadPhoto(asset.id, download.url, asset.size);
+            if (!bytes) return null;
+            const photo = await readPhoto(asset.id, bytes);
             return photo ? { assetId: asset.id, mime: asset.mime, ...photo } : null;
           }),
         );

@@ -1,6 +1,10 @@
-import { describe, expect, test } from 'bun:test';
+import { afterAll, beforeAll, describe, expect, spyOn, test } from 'bun:test';
+import { createServer, type Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import type { ServiceAssetMetadata } from '@oxy.so/core';
+import { OxyServer } from '@oxy.so/core/server';
 import sharp from 'sharp';
-import { readPhoto, takenAtFromExif } from '../photos.service';
+import { createOxyPhotoSource, readPhoto, takenAtFromExif } from '../photos.service';
 
 /** A JPEG `width`×`height`, three quarters orange and a quarter blue. */
 async function photo(
@@ -78,5 +82,95 @@ describe('takenAtFromExif', () => {
   test('is null with no EXIF and for EXIF it cannot read', () => {
     expect(takenAtFromExif('asset', undefined)).toBeNull();
     expect(takenAtFromExif('asset', Buffer.from('garbage'))).toBeNull();
+  });
+});
+
+describe('createOxyPhotoSource', () => {
+  const OWNER = 'user-1';
+  let jpeg: Uint8Array;
+  let store: Server;
+  let storeBase: string;
+  let endlessBytesSent = 0;
+
+  beforeAll(async () => {
+    jpeg = await photo(64, 48);
+    // Stands in for the store a minted download URL points at.
+    store = createServer((req, res) => {
+      if (req.url === '/photo') {
+        res.end(jpeg);
+        return;
+      }
+      if (req.url === '/endless') {
+        // Never ends: only a reader that stops at the recorded size returns.
+        const chunk = Buffer.alloc(64 * 1024);
+        const write = (): void => {
+          while (!res.destroyed && res.write(chunk)) endlessBytesSent += chunk.length;
+          if (!res.destroyed) res.once('drain', write);
+        };
+        write();
+        return;
+      }
+      res.statusCode = 404;
+      res.end();
+    });
+    await new Promise<void>((resolve) => store.listen(0, '127.0.0.1', resolve));
+    storeBase = `http://127.0.0.1:${(store.address() as AddressInfo).port}`;
+  });
+
+  afterAll(() => {
+    store.closeAllConnections();
+    store.close();
+  });
+
+  /** An Oxy whose files are `paths` (asset id → store path), each `size` bytes per Oxy Files. */
+  function oxyWith(files: Record<string, { path: string; size: number }>): OxyServer {
+    const oxy = new OxyServer({ baseURL: 'http://127.0.0.1:9' });
+    spyOn(oxy.assets, 'metadataByIds').mockImplementation(async (ids) =>
+      ids.map(
+        (id): ServiceAssetMetadata => ({
+          id,
+          sha256: 'a'.repeat(64),
+          mime: 'image/jpeg',
+          size: files[id]?.size ?? 0,
+          status: 'active',
+          ownerUserId: OWNER,
+        }),
+      ),
+    );
+    spyOn(oxy.assets, 'linkedDownloadUrls').mockImplementation(async (ids) =>
+      ids.map((id) => ({
+        id,
+        url: `${storeBase}${files[id]?.path ?? '/missing'}`,
+        expiresIn: 300,
+        mime: 'image/jpeg',
+        size: files[id]?.size ?? 0,
+        sha256: 'a'.repeat(64),
+      })),
+    );
+    return oxy;
+  }
+
+  test('reads a photo whose bytes are the size Oxy Files recorded', async () => {
+    const source = createOxyPhotoSource(oxyWith({ ok: { path: '/photo', size: jpeg.length } }));
+    expect(await source.read(OWNER, ['ok'])).toMatchObject([
+      { assetId: 'ok', width: 64, height: 48 },
+    ]);
+  });
+
+  test('refuses a photo whose bytes run past the recorded size, without reading them all', async () => {
+    const source = createOxyPhotoSource(
+      oxyWith({
+        short: { path: '/photo', size: jpeg.length - 1 },
+        endless: { path: '/endless', size: 1024 * 1024 },
+      }),
+    );
+    expect(await source.read(OWNER, ['short', 'endless'])).toEqual([]);
+    // The endless body was cut off near the cap, not buffered.
+    expect(endlessBytesSent).toBeLessThan(64 * 1024 * 1024);
+  });
+
+  test('leaves out a photo the store does not serve', async () => {
+    const source = createOxyPhotoSource(oxyWith({ gone: { path: '/missing', size: 10 } }));
+    expect(await source.read(OWNER, ['gone'])).toEqual([]);
   });
 });

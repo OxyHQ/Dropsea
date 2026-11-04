@@ -1,12 +1,11 @@
 /**
- * `/albums` — every route requires an authenticated Oxy user. `app.ts` mounts
- * `createOxyAuthMiddleware(oxy)` ahead of this router; `requireOxyAuth` below
- * is the defensive second check that `req.userId` is really set, as Willo's
- * `homes.routes.ts` keeps.
+ * `/albums` — every route requires an authenticated Oxy user: `app.ts` mounts
+ * `createOxyAuthMiddleware(oxy)` ahead of this router, which answers 401 for a
+ * request with no person, so every handler here has one.
  */
 
 import type { AddAlbumItemsResponse, Album, AlbumItemsPage } from '@dropsea/shared-types';
-import { getRequiredOxyUserId, requireOxyAuth } from '@oxy.so/core/server';
+import { getRequiredOxyUserId } from '@oxy.so/core/server';
 import { type Request, type Response, Router } from 'express';
 import { z } from 'zod';
 import { BadRequestError } from '../errors';
@@ -51,7 +50,6 @@ const pageQuerySchema = z.object({
 
 export function createAlbumsRouter(photos: PhotoSource): Router {
   const router = Router();
-  router.use(requireOxyAuth);
 
   router.get('/', async (req: Request, res: Response<{ albums: Album[] }>) => {
     res.json({ albums: await albumsService.listAlbums(getRequiredOxyUserId(req)) });

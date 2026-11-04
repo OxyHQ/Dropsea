@@ -5,7 +5,7 @@
   "dependencies": {
     "@aws-sdk/credential-providers": "^3.1161.0",
     "@oxy.so/bloom": "17.0.0",
-    "@oxy.so/core": "7.16.0",
+    "@oxy.so/core": "7.17.0",
     "@oxy.so/db": "^1.4.0",
     "@dropsea/shared-types": "workspace:*",
     "drizzle-orm": "0.45.4",
