@@ -38,8 +38,10 @@ abstract class Entry {
     return path.basename(this.target);
   }
 
+  /** Whether an item of its kind is there, as Expo answers it: a folder's is no file's. */
   get exists(): boolean {
-    return fs.existsSync(this.target);
+    const stat = fs.statSync(this.target, { throwIfNoEntry: false });
+    return stat !== undefined && stat.isDirectory() === this instanceof Directory;
   }
 
   delete(): void {

@@ -246,6 +246,9 @@ export function ItemsView({
   // Where a drag of the items goes once it leaves Dropsea's own handling: the platform's drag,
   // between applications (OxyOS ADR 0035), where there is one.
   const platformDrag = usePlatformDrag();
+  // The items this view is dragging through the platform's drag, until it ends: none of them is a
+  // place to drop them, lit or taking the drop, as none of what Finder drags is.
+  const platformDragged = useRef<readonly string[]>([]);
   const [menu, setMenu] = useState<OpenMenu | null>(null);
 
   // What is drawn: the columns and rows at the width's threshold (a column's
@@ -524,12 +527,18 @@ export function ItemsView({
         item.source === 'local' ? [item.uri] : [],
       );
       if (files.length > 0) {
-        void platformDrag.start({
-          data: { files },
-          actions: ['copy', 'move', 'link'],
-          previewRef: { current: itemImages.current.get(key) ?? null },
-          count: files.length,
-        });
+        platformDragged.current = keys;
+        platformDrag
+          .start({
+            data: { files },
+            actions: ['copy', 'move', 'link'],
+            previewRef: { current: itemImages.current.get(key) ?? null },
+            count: files.length,
+          })
+          .catch((error: unknown) => console.warn('Dropsea could not drag items', { files, error }))
+          .finally(() => {
+            platformDragged.current = [];
+          });
         return;
       }
     }
@@ -603,7 +612,11 @@ export function ItemsView({
     measureContent();
     const point = contentPoint(dropOrigin.current.x + event.x, dropOrigin.current.y + event.y);
     const target = itemAtPoint(point);
-    return target && dropFolderFor?.(target) && target.source === 'local' && target.isFolder
+    return target &&
+      !platformDragged.current.includes(target.key) &&
+      dropFolderFor?.(target) &&
+      target.source === 'local' &&
+      target.isFolder
       ? target
       : null;
   };

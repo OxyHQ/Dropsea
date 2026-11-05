@@ -124,6 +124,12 @@ const en = {
     removeFromAlbum: 'Remove from Album',
     renameAlbum: 'Rename Album…',
     deleteAlbum: 'Delete Album…',
+    undo: 'Undo',
+    redo: 'Redo',
+    undoMove: (count: number, name: string) =>
+      count === 1 ? `Undo Move of “${name}”` : `Undo Move of ${count} Items`,
+    redoMove: (count: number, name: string) =>
+      count === 1 ? `Redo Move of “${name}”` : `Redo Move of ${count} Items`,
     selectAll: 'Select All',
     showHidden: 'Show Hidden Files',
     showSidebar: 'Show Sidebar',
@@ -177,6 +183,7 @@ const en = {
     io: 'The disk could not do that.',
     unavailable: 'Files on this device are not available.',
   } satisfies Record<FileProblem, string>,
+  placeStays: (name: string) => `“${name}” can’t be moved: the system keeps it where it is.`,
   couldNotLoad: 'Dropsea could not load this.',
   couldNotOpenFolder: 'Dropsea could not open this folder.',
   couldNotChange: 'Dropsea could not do that. Try again.',
@@ -347,6 +354,16 @@ const es: Strings = {
     removeFromAlbum: 'Quitar del álbum',
     renameAlbum: 'Renombrar álbum…',
     deleteAlbum: 'Eliminar álbum…',
+    undo: 'Deshacer',
+    redo: 'Rehacer',
+    undoMove: (count, name) =>
+      count === 1
+        ? `Deshacer el traslado de «${name}»`
+        : `Deshacer el traslado de ${count} elementos`,
+    redoMove: (count, name) =>
+      count === 1
+        ? `Rehacer el traslado de «${name}»`
+        : `Rehacer el traslado de ${count} elementos`,
     selectAll: 'Seleccionar todo',
     showHidden: 'Mostrar archivos ocultos',
     showSidebar: 'Mostrar barra lateral',
@@ -402,6 +419,7 @@ const es: Strings = {
     io: 'El disco no ha podido hacerlo.',
     unavailable: 'Los archivos de este dispositivo no están disponibles.',
   },
+  placeStays: (name) => `«${name}» no se puede mover: el sistema lo mantiene donde está.`,
   couldNotLoad: 'Dropsea no ha podido cargar esto.',
   couldNotOpenFolder: 'Dropsea no ha podido abrir esta carpeta.',
   couldNotChange: 'Dropsea no ha podido hacerlo. Inténtalo de nuevo.',

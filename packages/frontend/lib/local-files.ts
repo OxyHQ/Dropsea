@@ -10,6 +10,7 @@
 import { requireOptionalNativeModule } from 'expo';
 import { Directory, File, Paths } from 'expo-file-system';
 import { type LocalItem, localItem } from '@/lib/items';
+import { isSameUri } from '@/lib/local-places';
 import { type NameProblem, nameProblem } from '@/lib/names';
 import type { FileProblem } from '@/lib/strings';
 
@@ -74,10 +75,17 @@ function itemOf(entry: Directory | File): LocalItem {
   });
 }
 
-/** Why the file system refused: the item went, or something it said. */
+/** The code `expo-file-system` throws a refusal of the platform's with (Android's, as OxyOS's). */
+const REFUSED_CODE = 'ERR_INVALID_PERMISSION';
+
+/**
+ * Why the file system refused: the item went, the platform keeps it as it is (the home's
+ * standard folders, say), or something else it said.
+ */
 function problemOf(error: unknown, entry: Directory | File, action: string): FileProblem {
   console.warn(`Dropsea could not ${action}`, { uri: entry.uri, error });
-  return entry.exists ? 'io' : 'not-found';
+  if (!entry.exists) return 'not-found';
+  return error instanceof Error && Reflect.get(error, 'code') === REFUSED_CODE ? 'refused' : 'io';
 }
 
 /** A folder's items. Throws when the folder cannot be read (gone, or not allowed). */
@@ -125,7 +133,10 @@ export function renameItem(item: LocalItem, folderUri: string, name: string): Lo
   }
 }
 
-/** Moves items into a folder, each on its own: one that would replace an item there is refused. */
+/**
+ * Moves items into a folder, each on its own: one that would replace an item there is refused.
+ * One outcome per item, in their order.
+ */
 export async function moveItems(
   items: readonly LocalItem[],
   folderUri: string,
@@ -148,6 +159,50 @@ export async function moveItems(
     }
   }
   return outcomes;
+}
+
+/** An item moved: its URI before, and after. */
+export interface Moved {
+  from: string;
+  to: string;
+}
+
+/** The moves `moveItems` did, of `items` (in the order it was given them) to their outcomes. */
+export function movesDone(items: readonly LocalItem[], outcomes: readonly LocalOutcome[]): Moved[] {
+  return items.flatMap((item, index) => {
+    const outcome = outcomes[index];
+    return outcome?.ok ? [{ from: item.uri, to: outcome.uri }] : [];
+  });
+}
+
+/**
+ * Moves each item at `uri` into its folder `into`, as `moveItems` does (never over an item
+ * there): what came of each, and the moves done. An item no longer there, or whose folder is no
+ * longer there, is not found.
+ */
+export async function moveEach(
+  requests: readonly { uri: string; into: string }[],
+): Promise<{ outcomes: LocalOutcome[]; moved: Moved[] }> {
+  const outcomes: LocalOutcome[] = [];
+  const moved: Moved[] = [];
+  const folders = new Map<string, string[]>();
+  for (const { uri, into } of requests) folders.set(into, [...(folders.get(into) ?? []), uri]);
+  for (const [into, uris] of folders) {
+    if (!folderExists(into)) {
+      for (const uri of uris) outcomes.push({ key: uri, ok: false, problem: 'not-found' });
+      continue;
+    }
+    const items = itemsAtUris(uris);
+    for (const uri of uris) {
+      if (!items.some((item) => isSameUri(item.uri, uri))) {
+        outcomes.push({ key: uri, ok: false, problem: 'not-found' });
+      }
+    }
+    const done = await moveItems(items, into);
+    outcomes.push(...done);
+    moved.push(...movesDone(items, done));
+  }
+  return { outcomes, moved };
 }
 
 /**
