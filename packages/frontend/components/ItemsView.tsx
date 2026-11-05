@@ -246,8 +246,6 @@ export function ItemsView({
   // Where a drag of the items goes once it leaves Dropsea's own handling: the platform's drag,
   // between applications (OxyOS ADR 0035), where there is one.
   const platformDrag = usePlatformDrag();
-  const dragPreview = useRef<ComponentRef<typeof View> | null>(null);
-  const [preview, setPreview] = useState<{ name: string; count: number } | null>(null);
   const [menu, setMenu] = useState<OpenMenu | null>(null);
 
   // What is drawn: the columns and rows at the width's threshold (a column's
@@ -328,6 +326,14 @@ export function ItemsView({
     else itemViews.current.delete(key);
     focusItem(key, view);
   });
+  // What of each item a drag of it shows, as Finder's: its icon and name, as they are drawn.
+  const itemImages = useRef(new Map<string, ComponentRef<typeof View>>());
+  const [handleItemImage] = useState(
+    () => (key: string, view: ComponentRef<typeof View> | null) => {
+      if (view) itemImages.current.set(key, view);
+      else itemImages.current.delete(key);
+    },
+  );
 
   // Where the items' area is in the window, measured as it is laid out (and
   // as a press begins) at the scroll offset then, and moved by how far it has
@@ -510,18 +516,19 @@ export function ItemsView({
     if (key && isFirstMove && platformDrag) {
       // The platform takes the drag from here (OxyOS ADR 0035): to a folder of this window or of
       // another, the dock's Trash, any application. The selected items of this device go as
-      // their files; the platform ends the press, and nothing of Dropsea's own drag shows.
+      // their files; the platform ends the press, and nothing of Dropsea's own drag shows. Its
+      // image is the item pressed, as it is drawn, the platform stacking it with the count for
+      // several, as Finder's.
       const keys = isSelected(selection, key) ? selection.keys : [key];
       const files = draggedItems(keys).flatMap((item) =>
         item.source === 'local' ? [item.uri] : [],
       );
       if (files.length > 0) {
-        const first = draggedItems(keys)[0];
-        setPreview({ name: first?.name ?? '', count: files.length });
         void platformDrag.start({
           data: { files },
           actions: ['copy', 'move', 'link'],
-          previewRef: dragPreview,
+          previewRef: { current: itemImages.current.get(key) ?? null },
+          count: files.length,
         });
         return;
       }
@@ -677,6 +684,7 @@ export function ItemsView({
           accessibilityActions={itemActions(item)}
           onAccessibilityAction={handleAccessibilityAction}
           onView={handleItemView}
+          onImageView={handleItemImage}
         />
       );
     }
@@ -702,6 +710,7 @@ export function ItemsView({
         accessibilityActions={itemActions(item)}
         onAccessibilityAction={handleAccessibilityAction}
         onView={handleItemView}
+        onImageView={handleItemImage}
       />
     );
   };
@@ -878,30 +887,6 @@ export function ItemsView({
               </ScrollView>
             </View>
           </DropZone>
-          {preview ? (
-            <View
-              ref={dragPreview}
-              pointerEvents="none"
-              className="absolute flex-row items-center gap-2 rounded-xl bg-primary px-3 py-2"
-              style={{ left: -10000, top: 0 }}
-            >
-              <Text
-                variant="body-2-regular"
-                style={{ color: theme.colors.primaryForeground }}
-                numberOfLines={1}
-              >
-                {preview.name}
-              </Text>
-              {preview.count > 1 ? (
-                <Text
-                  variant="caption-1-semibold"
-                  style={{ color: theme.colors.primaryForeground }}
-                >
-                  {String(preview.count)}
-                </Text>
-              ) : null}
-            </View>
-          ) : null}
         </View>
       </ContextMenuTrigger>
       {/* Named by what it is for, as a screen reader says the menu as it opens. */}
