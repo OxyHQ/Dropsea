@@ -53,6 +53,11 @@ jobs:
       # The installed binary by path: a bare `bunx biome` that misses the local
       # install fetches npm's unrelated `biome` package, which lints nothing.
       - run: ./node_modules/.bin/biome ci .
+      # One copy of every package one version can serve and of every package
+      # that must be single (@oxy.so/*, react, expo, ...), Oxy releases inside
+      # their upgrade window, and the native peers @oxy.so/services requires.
+      - name: Oxy dependency health (oxy-doctor)
+        run: bun run doctor:oxy
       - run: bun run typecheck
       - name: Run the frontend tests
         working-directory: packages/frontend
