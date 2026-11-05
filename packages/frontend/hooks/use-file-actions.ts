@@ -18,12 +18,15 @@ import {
   type LocalOutcome,
   copyItems,
   itemsAtUris,
+  type Moved,
   moveItems,
+  movesDone,
   renameItem,
 } from '@/lib/local-files';
 import { isSameUri, parentUri } from '@/lib/local-places';
 import { freeName } from '@/lib/names';
 import { oxyServices } from '@/lib/oxy';
+import { type Replayed, recordMove, redoMove, undoMove } from '@/lib/undo';
 
 /** Assets Oxy Files' trash is emptied in, a page at a time. */
 const EMPTY_PAGE_SIZE = 100;
@@ -68,6 +71,19 @@ export function useFileActions() {
   const reportPlatform = (outcomes: readonly PlatformFileOutcome[]) => {
     const failed = outcomes.find((outcome) => !outcome.ok);
     if (failed && !failed.ok) toast.error(strings.fileProblems[failed.error]);
+  };
+  /** Shows moves done where the items were and where they went. */
+  const refreshMoved = (moves: readonly Moved[]) => {
+    for (const { from, to } of moves) {
+      refreshFolder(parentUri(from));
+      refreshFolder(parentUri(to));
+    }
+  };
+  /** Shows what an Undo or a Redo moved, and says what it could not. */
+  const showReplayed = (done: Replayed | null) => {
+    if (!done) return;
+    refreshMoved(done.moved);
+    reportLocal(done.outcomes);
   };
   /** Runs a change on each cloud item, saying which failed. */
   const eachCloud = async (
@@ -118,6 +134,7 @@ export function useFileActions() {
       const outcomes = await moveItems(items, folderUri);
       for (const item of items) refreshFolder(parentUri(item.uri));
       refreshFolder(folderUri);
+      recordMove(movesDone(items, outcomes));
       reportLocal(outcomes);
     },
 
@@ -137,9 +154,22 @@ export function useFileActions() {
       if (items.length === 0) return;
       const outcomes =
         action === 'copy' ? await copyItems(items, folderUri) : await moveItems(items, folderUri);
-      if (action === 'move') for (const item of items) refreshFolder(parentUri(item.uri));
+      if (action === 'move') {
+        for (const item of items) refreshFolder(parentUri(item.uri));
+        recordMove(movesDone(items, outcomes));
+      }
       refreshFolder(folderUri);
       reportLocal(outcomes);
+    },
+
+    /** Edit › Undo: the latest move taken back, each item into the folder it came from. */
+    async undo(): Promise<void> {
+      showReplayed(await undoMove());
+    },
+
+    /** Edit › Redo: the latest move undone made again. */
+    async redo(): Promise<void> {
+      showReplayed(await redoMove());
     },
 
     /**
