@@ -1,4 +1,8 @@
-import { type PlatformFileOutcome, usePlatformFiles } from '@oxy.so/bloom/platform-surface';
+import {
+  type PlatformFileOutcome,
+  usePlatformFiles,
+  usePlatformSounds,
+} from '@oxy.so/bloom/platform-surface';
 import { toast } from '@oxy.so/bloom/toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { cloudFilesKey } from '@/hooks/use-cloud-files';
@@ -46,6 +50,9 @@ function namesIn(folderUri: string): string[] {
  */
 export function useFileActions() {
   const files = usePlatformFiles();
+  // The platform's own Trash sounds (OxyOS's, docs/adr/0044-system-sounds.mdx there): Dropsea
+  // ships no sound of its own.
+  const sounds = usePlatformSounds();
   const queryClient = useQueryClient();
   const { strings } = useLocale();
   const { userId } = useViewer();
@@ -79,6 +86,7 @@ export function useFileActions() {
       if (item) toast.error(strings.cloudProblem(item.name));
     });
     await refreshCloud();
+    return results.some((result) => result.status === 'fulfilled');
   };
 
   return {
@@ -134,21 +142,31 @@ export function useFileActions() {
       reportLocal(outcomes);
     },
 
-    /** This device's items into the platform's Trash, Oxy Files' into its own. */
+    /**
+     * This device's items into the platform's Trash, Oxy Files' into its own; the platform's
+     * move-to-trash sound once, as soon as any went, as Finder sounds a Move to Trash.
+     */
     async moveToTrash(items: readonly Item[]): Promise<void> {
       const local = items.filter(isLocal);
       const cloud = items.filter(isCloud);
+      let hasSounded = false;
       if (local.length > 0 && files) {
-        reportPlatform(await files.trash(local.map((item) => item.uri)));
+        const outcomes = await files.trash(local.map((item) => item.uri));
+        if (outcomes.some((outcome) => outcome.ok)) {
+          sounds?.play('move-to-trash');
+          hasSounded = true;
+        }
+        reportPlatform(outcomes);
         for (const item of local) refreshFolder(parentUri(item.uri));
         await refreshPlatformTrash();
       }
       if (cloud.length > 0) {
-        await eachCloud(
+        const hasTrashed = await eachCloud(
           cloud,
           (assetId) => oxyServices.assets.trash(assetId),
           'move a file to the trash',
         );
+        if (hasTrashed && !hasSounded) sounds?.play('move-to-trash');
       }
     },
 
@@ -190,6 +208,7 @@ export function useFileActions() {
       if (files) {
         try {
           await files.emptyTrash();
+          sounds?.play('empty-trash');
         } catch (error) {
           console.warn('Dropsea could not empty the Trash', error);
           toast.error(strings.fileProblems.io);
