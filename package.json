@@ -12,6 +12,7 @@
     "typecheck": "bun run --cwd packages/shared-types typecheck && bun run --cwd packages/backend typecheck && bun run --cwd packages/frontend typecheck",
     "test": "bun run --cwd packages/backend test && bun run --cwd packages/frontend test",
     "lint": "biome check .",
+    "doctor:oxy": "oxy-doctor --ci",
     "lint:fix": "biome check --write .",
     "format": "biome format --write ."
   },
