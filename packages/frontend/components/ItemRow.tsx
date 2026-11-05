@@ -44,6 +44,8 @@ export interface ItemRowProps {
   onAccessibilityAction: (item: Item, action: string) => void;
   /** Its view as it is drawn (null as it goes): what screen-reader focus and a menu opened from the keyboard go to. */
   onView: (key: string, view: ComponentRef<typeof View> | null) => void;
+  /** What a drag of it shows (null as it goes): its icon and name, as Finder's list drags them. */
+  onImageView: (key: string, view: ComponentRef<typeof View> | null) => void;
 }
 
 export const ItemRow = memo(function ItemRow({
@@ -63,6 +65,7 @@ export const ItemRow = memo(function ItemRow({
   accessibilityActions,
   onAccessibilityAction,
   onView,
+  onImageView,
 }: ItemRowProps) {
   const { strings, locale } = useLocale();
   const kind = itemKind(item);
@@ -112,31 +115,51 @@ export const ItemRow = memo(function ItemRow({
       className={`absolute inset-x-2.5 select-none flex-row items-center rounded-[6px] px-2 ${rowClass} ${isDimmed ? 'opacity-50' : ''}`}
       style={{ top, height }}
     >
-      <ItemIcon
-        kind={kind}
-        size={iconSize}
-        thumbnailUrl={thumbnailUrl}
-        isCropped
-        testID={`thumbnail-${item.name}`}
-      />
       {rename && item.source === 'local' ? (
-        <RenameField
-          name={item.name}
-          isFolder={item.isFolder}
-          isCentred={false}
-          onText={rename.onText}
-          onDone={rename.onDone}
-        />
+        <>
+          <ItemIcon
+            kind={kind}
+            size={iconSize}
+            thumbnailUrl={thumbnailUrl}
+            isCropped
+            testID={`thumbnail-${item.name}`}
+          />
+          <RenameField
+            name={item.name}
+            isFolder={item.isFolder}
+            isCentred={false}
+            onText={rename.onText}
+            onDone={rename.onDone}
+          />
+        </>
       ) : (
-        <Text
-          variant="body-2-regular"
-          numberOfLines={1}
-          ellipsizeMode="middle"
-          selectable={false}
-          className={`min-w-0 flex-1 ps-2 ${textClass}`}
-        >
-          {item.name}
-        </Text>
+        <View className="min-w-0 flex-1 flex-row items-center">
+          {/* Its icon and name, as wide as they are: what a drag of it shows, the
+              selection's accent behind white text so they read there too. A view of
+              its own whatever it draws, as a view snapshot needs. */}
+          <View
+            ref={(view) => onImageView(item.key, view)}
+            collapsable={false}
+            className={`min-w-0 shrink flex-row items-center rounded-[4px] ${isAccented ? 'bg-primary' : ''}`}
+          >
+            <ItemIcon
+              kind={kind}
+              size={iconSize}
+              thumbnailUrl={thumbnailUrl}
+              isCropped
+              testID={`thumbnail-${item.name}`}
+            />
+            <Text
+              variant="body-2-regular"
+              numberOfLines={1}
+              ellipsizeMode="middle"
+              selectable={false}
+              className={`min-w-0 shrink pe-1 ps-2 ${textClass}`}
+            >
+              {item.name}
+            </Text>
+          </View>
+        </View>
       )}
       {hasOriginColumn ? (
         <Text

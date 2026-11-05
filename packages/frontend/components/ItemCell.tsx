@@ -48,6 +48,8 @@ export interface ItemCellProps {
   onAccessibilityAction: (item: Item, action: string) => void;
   /** Its view as it is drawn (null as it goes): what screen-reader focus and a menu opened from the keyboard go to. */
   onView: (key: string, view: ComponentRef<typeof View> | null) => void;
+  /** What a drag of it shows (null as it goes): the whole of it, its icon over its name. */
+  onImageView: (key: string, view: ComponentRef<typeof View> | null) => void;
 }
 
 export const ItemCell = memo(function ItemCell({
@@ -67,10 +69,14 @@ export const ItemCell = memo(function ItemCell({
   accessibilityActions,
   onAccessibilityAction,
   onView,
+  onImageView,
 }: ItemCellProps) {
   const kind = itemKind(item);
   const accessibility = {
-    ref: (view: ComponentRef<typeof View> | null) => onView(item.key, view),
+    ref: (view: ComponentRef<typeof View> | null) => {
+      onView(item.key, view);
+      onImageView(item.key, view);
+    },
     testID: `item-${item.name}`,
     // One element for assistive technology, its icon and name read as it.
     accessible: true,
