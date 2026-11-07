@@ -475,7 +475,12 @@ export function ItemsView({
       return;
     }
     if (asked) {
-      menuView.current = list.current;
+      // A press on an item: the menu at the press, hung from the item, so the screen reader's
+      // focus goes back to that item when it closes, as VoiceOver's does in Finder (the list
+      // said its own name instead); on the background, from the list. The press is a point in
+      // the window, so the item's view places it as well as the list's did.
+      menuView.current =
+        (asked.key === null ? undefined : itemViews.current.get(asked.key)) ?? list.current;
       setMenu({ anchor, key: asked.key });
       return;
     }
