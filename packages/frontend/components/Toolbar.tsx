@@ -14,6 +14,7 @@ import {
   RiInformationLine,
   RiLayoutGridLine,
   RiListView,
+  RiPriceTag3Line,
   RiSearchLine,
   RiSideBarLine,
   RiUploadCloud2Line,
@@ -39,6 +40,7 @@ export function Toolbar({
   isPreviewShown,
   onPreviewShown,
   onUpload,
+  onTags,
 }: {
   title: string;
   /** The place shown, which the search looks in: the title, but in the file chooser, whose title is its own. */
@@ -55,6 +57,8 @@ export function Toolbar({
   onPreviewShown: (isShown: boolean) => void;
   /** Uploading what the person picks, where that is how files reach Oxy Files here. */
   onUpload: (() => void) | null;
+  /** The Tags button, Finder's: the selection's tags (null where nothing selected takes tags). */
+  onTags: (() => void) | null;
 }) {
   const { strings } = useLocale();
   const { navigationDock } = useAppShell();
@@ -115,6 +119,16 @@ export function Toolbar({
               />
             </ButtonGroup>
           ) : null}
+          <ButtonGroup accessibilityLabel={strings.tags.button}>
+            <ButtonGroupItem
+              iconOnly
+              leadingIcon={RiPriceTag3Line}
+              accessibilityLabel={strings.tags.button}
+              disabled={onTags === null}
+              onPress={() => onTags?.()}
+              testID="tags-button"
+            />
+          </ButtonGroup>
           <ButtonGroup accessibilityLabel={strings.view}>
             <ButtonGroupItem
               iconOnly

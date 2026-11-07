@@ -225,10 +225,15 @@ export function layoutWidthThresholds(
 }
 
 /** The list's columns that fit a width: the name always, then date, size and kind as room allows. */
-export function listColumns(width: number): { date: boolean; size: boolean; kind: boolean } {
-  return { date: width >= 420, size: width >= 520, kind: width >= 700 };
+export function listColumns(width: number): {
+  date: boolean;
+  size: boolean;
+  kind: boolean;
+  tags: boolean;
+} {
+  return { date: width >= 420, size: width >= 520, kind: width >= 700, tags: width >= 840 };
 }
-const LIST_COLUMN_WIDTHS = [420, 520, 700];
+const LIST_COLUMN_WIDTHS = [420, 520, 700, 840];
 /** The most columns a grid is laid out with: a window this wide is wider than any screen. */
 const MAX_COLUMNS = 64;
 

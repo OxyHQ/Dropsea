@@ -7,6 +7,7 @@ import type { AssetRecord } from '@oxy.so/core';
 import type { PlatformTrashedItem } from '@oxy.so/bloom/platform-surface';
 import type { Album, AlbumItem } from '@dropsea/shared-types';
 import { kindOf } from '@/lib/kinds';
+import { type ItemTag, isTagColor, tagKey } from '@/lib/tags';
 
 /** What every item has, whatever its source. */
 interface ItemFacts {
@@ -64,6 +65,8 @@ export interface LocalTrashItem extends ItemFacts {
   /** Where it was; null when the Trash no longer says. */
   originalUri: string | null;
   deletedAt: number | null;
+  /** Its tags, as the Trash keeps them on it. */
+  tags: readonly ItemTag[];
 }
 
 /** A file in Oxy Files' trash. */
@@ -90,7 +93,9 @@ export type Location =
   | { kind: 'photos' }
   | { kind: 'albums' }
   | { kind: 'album'; albumId: string }
-  | { kind: 'trash' };
+  | { kind: 'trash' }
+  /** Every item with a tag, on this device and in Oxy Files, as Finder's sidebar tags show them. */
+  | { kind: 'tag'; name: string };
 
 /** A string that names a location, equal for equal locations. */
 export function locationKey(location: Location): string {
@@ -99,6 +104,8 @@ export function locationKey(location: Location): string {
       return `folder:${location.uri}`;
     case 'album':
       return `album:${location.albumId}`;
+    case 'tag':
+      return `tag:${tagKey(location.name)}`;
     default:
       return location.kind;
   }
@@ -186,6 +193,10 @@ export function localTrashItem(trashed: PlatformTrashedItem): LocalTrashItem {
     mime: null,
     originalUri: trashed.originalUri,
     deletedAt: trashed.deletedAt,
+    tags: trashed.tags.map((tag) => ({
+      name: tag.name,
+      color: isTagColor(tag.color) ? tag.color : null,
+    })),
   };
 }
 

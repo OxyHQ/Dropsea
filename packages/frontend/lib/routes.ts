@@ -1,8 +1,8 @@
 /**
  * Where each location lives in Dropsea's routes, both ways, so a link opens the
  * place it names and every place has a link: `/files?uri=…` (a folder on this
- * device, by its URI), `/cloud`, `/photos`, `/albums`, `/albums/[id]` and
- * `/trash`.
+ * device, by its URI), `/cloud`, `/photos`, `/albums`, `/albums/[id]`,
+ * `/trash` and `/tags/[name]` (every item with a tag).
  */
 import type { Href } from 'expo-router';
 import type { Location } from '@/lib/items';
@@ -21,6 +21,8 @@ export function hrefFor(location: Location): Href {
       return { pathname: '/albums/[id]', params: { id: location.albumId } };
     case 'trash':
       return '/trash';
+    case 'tag':
+      return { pathname: '/tags/[name]', params: { name: location.name } };
   }
 }
 
@@ -49,6 +51,8 @@ export function locationFromRoute(
       return id ? { kind: 'album', albumId: decodeURIComponent(id) } : { kind: 'albums' };
     case 'trash':
       return { kind: 'trash' };
+    case 'tags':
+      return id ? { kind: 'tag', name: decodeURIComponent(id) } : null;
     default:
       return null;
   }

@@ -27,8 +27,9 @@ import { useLocale } from '@/hooks/use-locale';
 import type { Location } from '@/lib/items';
 import type { LocalPlace } from '@/lib/local-places';
 import type { SortColumn, SortOrder } from '@/lib/sorting';
+import { KEYBOARD_TAG_COUNT } from '@/lib/tags';
 
-const SORT_COLUMNS: readonly SortColumn[] = ['name', 'kind', 'date', 'size'];
+const SORT_COLUMNS: readonly SortColumn[] = ['name', 'kind', 'date', 'size', 'tags'];
 
 function isViewMode(value: string): value is ViewMode {
   return value === 'icons' || value === 'list';
@@ -74,6 +75,7 @@ export function BrowserMenus({
   onForward,
   onEnclosing,
   onGo,
+  onSettings,
 }: {
   commands: Commands;
   location: Location;
@@ -92,6 +94,8 @@ export function BrowserMenus({
   onForward: () => void;
   onEnclosing: (() => void) | null;
   onGo: (location: Location) => void;
+  /** Dropsea's settings (its Tags). */
+  onSettings: () => void;
 }) {
   const { strings } = useLocale();
   const { navigationDock } = useAppShell();
@@ -131,6 +135,46 @@ export function BrowserMenus({
           >
             {strings.menus.preview}
           </MenubarItem>
+          <MenubarItem
+            shortcut="Mod+I"
+            disabled={!commands.getInfo.isEnabled}
+            onPress={commands.getInfo.run}
+          >
+            {strings.getInfo}
+          </MenubarItem>
+          <MenubarSeparator />
+          {/* Finder's tags in the File menu: its first seven favourites on Control-1 to Control-7
+              and Control-0 for none, here Mod+Alt (Ctrl is the applications' ⌘ on OxyOS, and
+              Ctrl+1 and Ctrl+2 are the views). */}
+          <MenubarSub>
+            <MenubarSubTrigger disabled={!commands.editTags.isEnabled}>
+              {strings.tags.section}
+            </MenubarSubTrigger>
+            <MenubarSubContent>
+              {commands.tagChoices.map(({ definition, state, command }, index) => (
+                <MenubarCheckboxItem
+                  key={definition.name}
+                  checked={state === 'on'}
+                  disabled={!command.isEnabled}
+                  onCheckedChange={command.run}
+                  shortcut={index < KEYBOARD_TAG_COUNT ? `Mod+Alt+${index + 1}` : undefined}
+                >
+                  {definition.name}
+                </MenubarCheckboxItem>
+              ))}
+              <MenubarItem
+                shortcut="Mod+Alt+0"
+                disabled={!commands.removeAllTags.isEnabled}
+                onPress={commands.removeAllTags.run}
+              >
+                {strings.tags.removeAll}
+              </MenubarItem>
+              <MenubarSeparator />
+              <MenubarItem disabled={!commands.editTags.isEnabled} onPress={commands.editTags.run}>
+                {strings.tags.menu}
+              </MenubarItem>
+            </MenubarSubContent>
+          </MenubarSub>
           <MenubarSeparator />
           {isInTrash ? (
             <>
@@ -250,6 +294,10 @@ export function BrowserMenus({
               <MenubarItem onPress={commands.signIn.run}>{strings.menus.signIn}</MenubarItem>
             </>
           ) : null}
+          <MenubarSeparator />
+          <MenubarItem shortcut="Mod+," onPress={onSettings}>
+            {strings.settings}
+          </MenubarItem>
         </MenubarContent>
       </MenubarMenu>
       <MenubarMenu value="edit">

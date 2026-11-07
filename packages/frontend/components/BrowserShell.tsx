@@ -19,8 +19,10 @@ import { ProfileButton } from '@oxy.so/services/ui/client';
 import { Slot, usePathname } from 'expo-router';
 import { Image } from 'react-native';
 import { AlbumNameDialog } from '@/components/AlbumNameDialog';
+import { SettingsDialog } from '@/components/SettingsDialog';
 import { useBrowser } from '@/components/BrowserProvider';
 import { useAlbumActions } from '@/hooks/use-album-actions';
+import { useLocalTagsFollowed } from '@/hooks/use-item-tags';
 import { useLocale } from '@/hooks/use-locale';
 import { useLocalPlaces } from '@/hooks/use-local-places';
 import { useSidebarTree } from '@/hooks/use-sidebar-tree';
@@ -40,12 +42,18 @@ const WINDOW_MIN = { minWidth: 640, minHeight: 400 };
 const CHOOSER_MIN = { minWidth: 640, minHeight: 440 };
 
 export function BrowserShell() {
-  const { location, navigate, isNewAlbumOpen, setNewAlbumOpen } = useBrowser();
+  const { location, navigate, isNewAlbumOpen, setNewAlbumOpen, isSettingsOpen, setSettingsOpen } =
+    useBrowser();
   const { strings } = useLocale();
   const { places } = useLocalPlaces();
-  const { tree, locations } = useSidebarTree(places, () => setNewAlbumOpen(true));
+  const { tree, locations } = useSidebarTree(
+    places,
+    () => setNewAlbumOpen(true),
+    () => setSettingsOpen(true),
+  );
   const { isSignedIn } = useViewer();
   const albumActions = useAlbumActions();
+  useLocalTagsFollowed();
   const pathname = usePathname();
   const isChooser = usePlatformFiles()?.chooser !== undefined;
   useWindowSizeLimits(isChooser ? CHOOSER_MIN : WINDOW_MIN);
@@ -134,6 +142,7 @@ export function BrowserShell() {
           onClose={() => setNewAlbumOpen(false)}
         />
       ) : null}
+      <SettingsDialog isOpen={isSettingsOpen} onClose={() => setSettingsOpen(false)} />
     </>
   );
 }

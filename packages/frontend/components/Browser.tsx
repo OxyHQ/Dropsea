@@ -28,15 +28,20 @@ import { BrowserMenus } from '@/components/BrowserMenus';
 import { useBrowser } from '@/components/BrowserProvider';
 import { ChooserBar } from '@/components/ChooserBar';
 import { BackgroundMenuRows, ItemMenuRows } from '@/components/ItemMenus';
+import { InfoDialog } from '@/components/InfoDialog';
 import { ItemsView } from '@/components/ItemsView';
 import { PreviewDialog } from '@/components/PreviewDialog';
 import { PreviewPane } from '@/components/PreviewPane';
 import { SignInPanel } from '@/components/SignInPanel';
 import { StatusBar } from '@/components/StatusBar';
+import { TagsDialog } from '@/components/TagsDialog';
 import { Toolbar } from '@/components/Toolbar';
 import { useAlbums } from '@/hooks/use-albums';
 import { type AssetUrlRequest, assetUrlKey, useAssetUrls } from '@/hooks/use-asset-urls';
 import { useBrowserKeys } from '@/hooks/use-browser-keys';
+import { useItemTags } from '@/hooks/use-item-tags';
+import { canTag } from '@/hooks/use-tag-actions';
+import { useTagDefinitions } from '@/hooks/use-tag-definitions';
 import { type ConfirmRequest, useCommands } from '@/hooks/use-commands';
 import { useLocale } from '@/hooks/use-locale';
 import { useLocalPlaces } from '@/hooks/use-local-places';
@@ -56,6 +61,7 @@ import type { ItemsLayout } from '@/lib/items-layout';
 import { isSameUri, parentUri, pathParts, placeOf, uriName } from '@/lib/local-places';
 import { isSelected, keepShown, type Selection, selectAll } from '@/lib/selection';
 import { sortBy, sortItems, visibleItems } from '@/lib/sorting';
+import { TAG_KEYWORD, tagStyleOf } from '@/lib/tags';
 
 /** A picture larger than this is not decoded for an icon: its kind's glyph is drawn instead. */
 const THUMBNAIL_MAX_BYTES = 24 * 1024 * 1024;
@@ -132,6 +138,9 @@ export function Browser({ listing }: { listing: Listing }) {
   const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
   const [albumBeingRenamed, setAlbumBeingRenamed] = useState<Album | null>(null);
   const [nameProblem, setNameProblem] = useState<string | null>(null);
+  // The items a Tags… panel or Get Info is open for, by key: they show their tags as they change.
+  const [tagsPanelKeys, setTagsPanelKeys] = useState<readonly string[] | null>(null);
+  const [infoKeys, setInfoKeys] = useState<readonly string[] | null>(null);
   // The save panel's file of the name typed, asked about before it is replaced.
   const [replacing, setReplacing] = useState<{ uri: string; name: string } | null>(null);
   // The grid's columns, for the arrows: read as a key is pressed, never drawn.
@@ -142,7 +151,16 @@ export function Browser({ listing }: { listing: Listing }) {
 
   const viewMode = browser.viewModeFor(location);
   const order = browser.orderFor(location);
-  const shown = sortItems(visibleItems(items, search, browser.isShowingHidden), order);
+  const tags = useItemTags(items, location.kind === 'folder' ? location.uri : null);
+  const { definitions } = useTagDefinitions();
+  const tagStyle = tagStyleOf(definitions);
+  // A search finds `tag:Red` in English and in the person's language's own word.
+  const tagKeywords = [...new Set([TAG_KEYWORD, strings.tags.keyword])];
+  const shown = sortItems(
+    visibleItems(items, search, browser.isShowingHidden, tagKeywords, tags),
+    order,
+    tags,
+  );
   const shownKeys = shown.map((item) => item.key);
   // The file chooser selects what the request can take, and the folders it goes into.
   const selectable = chooser ? shown.filter((item) => isSelectable(item, chooser.request)) : shown;
@@ -214,7 +232,14 @@ export function Browser({ listing }: { listing: Listing }) {
     newAlbum: () => browser.setNewAlbumOpen(true),
     setSelection: (next) => setSelection(next),
     selectAll: () => setSelection(selectAll(shownKeys)),
+    tagsOf: tags.tagsOf,
+    editTags: (chosen) => setTagsPanelKeys(chosen.map((item) => item.key)),
+    getInfo: (chosen) => setInfoKeys(chosen.map((item) => item.key)),
   });
+  const itemsWithKeys = (keys: readonly string[] | null) =>
+    keys ? items.filter((item) => keys.includes(item.key)) : [];
+  const tagsPanelItems = itemsWithKeys(tagsPanelKeys);
+  const infoItems = itemsWithKeys(infoKeys);
   // What the items' actions, the toolbar and the confirmation use, read on
   // their own: the compiler then keeps what is made of them while they stay the
   // same. Read from `commands`, new at every selection, what is made of them
@@ -311,7 +336,13 @@ export function Browser({ listing }: { listing: Listing }) {
   };
 
   useBrowserKeys({
-    isEnabled: isWindowActive && confirm === null && replacing === null && nameProblem === null,
+    isEnabled:
+      isWindowActive &&
+      confirm === null &&
+      replacing === null &&
+      nameProblem === null &&
+      tagsPanelKeys === null &&
+      infoKeys === null,
     viewMode,
     getColumns: () => columns.current,
     shown: selectable,
@@ -434,6 +465,8 @@ export function Browser({ listing }: { listing: Listing }) {
                   onSelectionChange={handleSelectionChange}
                   isWindowActive={isWindowActive}
                   thumbnails={thumbnails}
+                  tagsOf={tags.tagsOf}
+                  tagStyle={tagStyle}
                   renamingKey={renamingKey}
                   onRenameText={(text) => {
                     if (renaming.current) renaming.current.text = text;
@@ -520,6 +553,12 @@ export function Browser({ listing }: { listing: Listing }) {
                         item={previewed}
                         thumbnailUrl={thumbnails.get(previewed.key) ?? null}
                         origin={originOf(previewed) || null}
+                        tags={tags.tagsOf(previewed)}
+                        onTagsChange={
+                          !chooser && canTag(previewed)
+                            ? (change) => commands.changeTags([previewed], change)
+                            : null
+                        }
                       />
                     ) : (
                       <View
@@ -576,6 +615,7 @@ export function Browser({ listing }: { listing: Listing }) {
       onForward={browser.goForward}
       onEnclosing={enclosing ? () => browser.navigate(enclosing) : null}
       onGo={browser.navigate}
+      onSettings={() => browser.setSettingsOpen(true)}
     />
   );
 
@@ -602,6 +642,7 @@ export function Browser({ listing }: { listing: Listing }) {
               ? uploadPicked.run
               : null
           }
+          onTags={!chooser && commands.editTags.isEnabled ? commands.editTags.run : null}
         />
       }
       bottomBar={
@@ -699,6 +740,28 @@ export function Browser({ listing }: { listing: Listing }) {
         onCancel={() => setReplacing(null)}
         testID="replace-confirm"
       />
+      {tagsPanelItems.length > 0 ? (
+        <TagsDialog
+          items={tagsPanelItems}
+          tagsOf={tags.tagsOf}
+          onChange={(change) => commands.changeTags(tagsPanelItems, change)}
+          onClose={() => setTagsPanelKeys(null)}
+        />
+      ) : null}
+      {infoItems.length > 0 ? (
+        <InfoDialog
+          items={infoItems}
+          tagsOf={tags.tagsOf}
+          thumbnailUrl={
+            infoItems.length === 1 && infoItems[0]
+              ? (thumbnails.get(infoItems[0].key) ?? null)
+              : null
+          }
+          originOf={originOf}
+          onChange={(change) => commands.changeTags(infoItems, change)}
+          onClose={() => setInfoKeys(null)}
+        />
+      ) : null}
       <PreviewDialog
         item={previewItem}
         origin={previewItem ? originOf(previewItem) || null : null}

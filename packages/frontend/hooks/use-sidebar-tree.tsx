@@ -12,15 +12,20 @@ import {
   RiHomeLine,
   RiImageLine,
   RiMusic2Line,
+  RiPriceTag3Line,
   RiSmartphoneLine,
 } from '@oxy.so/bloom/icons';
 import { usePlatformFiles } from '@oxy.so/bloom/platform-surface';
 import type { SidebarIcon, SidebarTree } from '@oxy.so/bloom/sidebar';
+import { View } from 'react-native';
+import { TagMark } from '@/components/TagMark';
 import { useAlbums } from '@/hooks/use-albums';
 import { useLocale } from '@/hooks/use-locale';
+import { useTagDefinitions } from '@/hooks/use-tag-definitions';
 import { useViewer } from '@/hooks/use-viewer';
 import { type Location, locationKey } from '@/lib/items';
 import type { LocalPlace } from '@/lib/local-places';
+import { favouriteTags } from '@/lib/tags';
 
 const PLACE_ICONS: Record<LocalPlace['kind'], SidebarIcon> = {
   home: RiHomeLine,
@@ -36,8 +41,9 @@ const PLACE_ICONS: Record<LocalPlace['kind'], SidebarIcon> = {
 
 /**
  * The sidebar, as Finder's: Favourites (the home and its standard folders, or
- * this device's folder), Oxy (Oxy Files and Photos), the albums, and
- * Locations (the volumes and the Trash). Each row's key is the location it
+ * this device's folder), Oxy (Oxy Files and Photos), the albums, Locations
+ * (the volumes and the Trash) and Tags (the person's favourite tags, each the
+ * place of every item with it). Each row's key is the location it
  * opens. As the file chooser it holds the places on this device alone, where
  * what can be chosen is: Oxy Files, Photos, the albums and the Trash hold no
  * file the asking application could open.
@@ -45,10 +51,12 @@ const PLACE_ICONS: Record<LocalPlace['kind'], SidebarIcon> = {
 export function useSidebarTree(
   places: readonly LocalPlace[],
   onNewAlbum: () => void,
+  onAllTags: () => void,
 ): { tree: SidebarTree[]; locations: ReadonlyMap<string, Location> } {
   const { strings } = useLocale();
   const { isSignedIn } = useViewer();
   const albums = useAlbums();
+  const { definitions } = useTagDefinitions();
   const isChooser = usePlatformFiles()?.chooser !== undefined;
   const locations = new Map<string, Location>();
   const row = (location: Location, label: string, icon: SidebarIcon) => {
@@ -126,5 +134,36 @@ export function useSidebarTree(
       row({ kind: 'trash' }, strings.trash, RiDeleteBinLine),
     ],
   });
+  const sidebarTags = favouriteTags(definitions);
+  if (definitions.length > 0) {
+    tree.push({
+      key: 'tags',
+      label: strings.tags.section,
+      items: [
+        ...sidebarTags.map((tag) => {
+          const location: Location = { kind: 'tag', name: tag.name };
+          const key = locationKey(location);
+          locations.set(key, location);
+          return {
+            key,
+            label: tag.name,
+            // The tag's colour in the icon's box, as Finder's sidebar marks it.
+            leading: (
+              <View className="h-5 w-5 items-center justify-center">
+                <TagMark color={tag.color} />
+              </View>
+            ),
+          };
+        }),
+        // Every tag, the sidebar's or not, to show, order and change: Settings › Tags.
+        {
+          key: 'all-tags',
+          label: strings.tags.allTags,
+          icon: RiPriceTag3Line,
+          onPress: onAllTags,
+        },
+      ],
+    });
+  }
   return { tree, locations };
 }

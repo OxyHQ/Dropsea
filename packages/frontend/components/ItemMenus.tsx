@@ -36,6 +36,7 @@ export function ItemMenuRows({ item, commands }: { item: Item; commands: Command
       {commands.preview.isEnabled ? (
         <ContextMenuItem onPress={commands.preview.run}>{strings.menus.preview}</ContextMenuItem>
       ) : null}
+      <ContextMenuItem onPress={commands.getInfo.run}>{strings.getInfo}</ContextMenuItem>
       <ContextMenuSeparator />
       {commands.rename.isEnabled ? (
         <ContextMenuItem onPress={commands.rename.run}>{strings.menus.rename}</ContextMenuItem>
@@ -84,6 +85,12 @@ export function ItemMenuRows({ item, commands }: { item: Item; commands: Command
           <ContextMenuItem tone="danger" onPress={commands.deleteAlbum.run}>
             {strings.menus.deleteAlbum}
           </ContextMenuItem>
+        </>
+      ) : null}
+      {commands.editTags.isEnabled ? (
+        <>
+          <ContextMenuSeparator />
+          <ContextMenuItem onPress={commands.editTags.run}>{strings.tags.menu}</ContextMenuItem>
         </>
       ) : null}
       {commands.moveToTrash.isEnabled ? (

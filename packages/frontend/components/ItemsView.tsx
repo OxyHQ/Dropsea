@@ -102,6 +102,7 @@ import {
   selectOnly,
 } from '@/lib/selection';
 import type { SortColumn, SortOrder } from '@/lib/sorting';
+import type { ItemTag, TagStyle } from '@/lib/tags';
 
 /** What the items take dropped from any application: files, moved or (with Option) copied. */
 const DROP_ACCEPT = ['files'] as const;
@@ -160,6 +161,9 @@ export interface ItemsViewProps {
   onSelectionChange: (change: (selection: Selection) => Selection) => void;
   isWindowActive: boolean;
   thumbnails: ReadonlyMap<string, string>;
+  /** Each item's tags, and how they are drawn. */
+  tagsOf: (item: Item) => readonly ItemTag[];
+  tagStyle: TagStyle;
   renamingKey: string | null;
   onRenameText: (text: string) => void;
   /** Ends a rename in progress, keeping the name typed: Return, leaving the field, a press elsewhere. */
@@ -205,6 +209,8 @@ export function ItemsView({
   onSelectionChange,
   isWindowActive,
   thumbnails,
+  tagsOf,
+  tagStyle,
   renamingKey,
   onRenameText,
   onRenameDone,
@@ -694,6 +700,8 @@ export function ItemsView({
           hasOriginColumn={hasOriginColumn}
           origin={hasOriginColumn ? originOf(item) : ''}
           thumbnailUrl={thumbnailUrl}
+          tags={tagsOf(item)}
+          tagStyle={tagStyle}
           accessibilityActions={itemActions(item)}
           onAccessibilityAction={handleAccessibilityAction}
           onView={handleItemView}
@@ -720,6 +728,8 @@ export function ItemsView({
         isDropTarget={isDropTarget}
         rename={itemRename}
         thumbnailUrl={thumbnailUrl}
+        tags={tagsOf(item)}
+        tagStyle={tagStyle}
         accessibilityActions={itemActions(item)}
         onAccessibilityAction={handleAccessibilityAction}
         onView={handleItemView}

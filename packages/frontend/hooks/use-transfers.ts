@@ -1,10 +1,12 @@
 import type { AssetUploadInput } from '@oxy.so/core';
+import { type PlatformFileTag, usePlatformFiles } from '@oxy.so/bloom/platform-surface';
 import { toast } from '@oxy.so/bloom/toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { Linking } from 'react-native';
 import { cloudFilesKey } from '@/hooks/use-cloud-files';
 import { useLocale } from '@/hooks/use-locale';
 import { useViewer } from '@/hooks/use-viewer';
+import { changeFileTags, lookupFileTags } from '@/lib/dropsea-api';
 import { refreshFolder } from '@/lib/folder-store';
 import { formatPercent } from '@/lib/format';
 import type { LocalItem } from '@/lib/items';
@@ -18,6 +20,8 @@ interface Upload {
   input: AssetUploadInput;
   name: string;
   size: number | null;
+  /** The tags it goes up with: a file keeps its tags in Oxy Files, as a copy does. */
+  tags: readonly string[];
 }
 
 /** Uploads at once: enough to keep a connection busy, few enough that each shows progress. */
@@ -35,6 +39,29 @@ export function useTransfers() {
   const queryClient = useQueryClient();
   const { strings, locale } = useLocale();
   const { userId } = useViewer();
+  const files = usePlatformFiles();
+
+  /** The tags of files on this device, in their order; none where the platform keeps none. */
+  const localTags = async (uris: readonly string[]): Promise<(readonly PlatformFileTag[])[]> => {
+    if (!files?.tags || uris.length === 0) return uris.map(() => []);
+    try {
+      return (await files.tags.ofItems(uris)).map((tags) => tags ?? []);
+    } catch (error) {
+      console.warn('Dropsea could not read the tags of files it uploads', { error });
+      return uris.map(() => []);
+    }
+  };
+
+  /** The tags of Oxy Files assets, by id; none when the backend cannot say. */
+  const assetTags = async (assetIds: readonly string[]): Promise<Map<string, string[]>> => {
+    if (assetIds.length === 0) return new Map();
+    try {
+      return new Map(Object.entries(await lookupFileTags(assetIds)));
+    } catch (error) {
+      console.warn('Dropsea could not read the tags of files it downloads', { error });
+      return new Map();
+    }
+  };
 
   /** Uploads files, returning the asset ids of those that went up, in their order. */
   const upload = async (uploads: readonly Upload[]): Promise<string[]> => {
@@ -67,6 +94,17 @@ export function useTransfers() {
           });
           state.fraction = 1;
           assetIds[index] = uploaded.file.id;
+          if (item.tags.length > 0) {
+            try {
+              await changeFileTags([uploaded.file.id], item.tags, []);
+            } catch (error) {
+              console.warn('Dropsea uploaded a file and could not give it its tags', {
+                name: item.name,
+                error,
+              });
+              toast.error(strings.tags.couldNotChange(1));
+            }
+          }
         } catch (error) {
           console.warn('Dropsea could not upload a file to Oxy Files', { name: item.name, error });
           state.fraction = 1;
@@ -88,14 +126,17 @@ export function useTransfers() {
     /** This device's files up to Oxy Files; folders are left out, and said so. */
     async uploadLocal(items: readonly LocalItem[]): Promise<string[]> {
       const plan = planUploads(items);
+      // Each file's tags, read as it goes up: they go with it.
+      const tags = await localTags(plan.uploads.map((source) => source.uri));
       if (plan.skippedFolders.length > 0) {
         toast.info(strings.transfers.skippedFolders(plan.skippedFolders.length));
       }
       return upload(
-        plan.uploads.map((source) => ({
+        plan.uploads.map((source, index) => ({
           input: source,
           name: source.name,
           size: source.size ?? null,
+          tags: (tags[index] ?? []).map((tag) => tag.name),
         })),
       );
     },
@@ -116,6 +157,7 @@ export function useTransfers() {
           },
           name: asset.name,
           size: asset.size ?? null,
+          tags: [],
         })),
       );
     },
@@ -156,16 +198,31 @@ export function useTransfers() {
         toast.loading(strings.transfers.downloading(items.length, percent), { id: toastId });
       };
       show();
+      const cloudTags = await assetTags(items.map((item) => item.assetId));
       let downloaded = 0;
       for (const [index, step] of steps.entries()) {
         const state = progress[index];
         try {
           const url = await oxyServices.assets.url(step.assetId);
-          await downloadInto(url, folder.uri, step.fileName, (fraction) => {
+          const file = await downloadInto(url, folder.uri, step.fileName, (fraction) => {
             if (state) state.fraction = fraction;
             show();
           });
           downloaded++;
+          // The file keeps its tags on this device, as a copy does.
+          const tags = cloudTags.get(step.assetId) ?? [];
+          if (tags.length > 0 && files?.tags) {
+            const [outcome] = await files.tags.change([file.uri], {
+              add: tags.map((name) => ({ name, color: null })),
+            });
+            if (!outcome?.ok) {
+              console.warn('Dropsea downloaded a file and could not give it its tags', {
+                uri: file.uri,
+                outcome,
+              });
+              toast.error(strings.tags.couldNotChange(1));
+            }
+          }
         } catch (error) {
           console.warn('Dropsea could not download a file from Oxy Files', { step, error });
           toast.error(strings.transfers.downloadFailed(items[index]?.name ?? step.fileName));
