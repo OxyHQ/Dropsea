@@ -15,12 +15,15 @@ const SEARCH_KEY = ['platform-search'] as const;
 
 export function useSearchResults(search: PlatformSearch | null, query: PlatformSearchQuery | null) {
   const queryClient = useQueryClient();
+  // Followed only while there is a search to show: a window that is not
+  // searching is never woken by the index, and never starts it.
+  const searching = query !== null;
   useEffect(() => {
-    if (!search) return undefined;
+    if (!search || !searching) return undefined;
     return search.watch(() => {
       queryClient.invalidateQueries({ queryKey: SEARCH_KEY });
     });
-  }, [search, queryClient]);
+  }, [search, searching, queryClient]);
   return useQuery({
     queryKey: [...SEARCH_KEY, query],
     queryFn: () => {
