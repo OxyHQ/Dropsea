@@ -28,6 +28,8 @@ function dateFormat(locale: string, options: Intl.DateTimeFormatOptions): Intl.D
 
 const CLOCK: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' };
 const DAY: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' };
+const MONTH: Intl.DateTimeFormatOptions = { month: 'long' };
+const YEAR: Intl.DateTimeFormatOptions = { year: 'numeric' };
 
 export interface SizeUnits {
   bytes: (count: number) => string;
@@ -79,6 +81,17 @@ export function formatDate(time: number, now: number, locale: string, words: Day
 /** A day as Photos names a photo by it: "12 Mar 2026". */
 export function formatDay(time: number, locale: string): string {
   return dateFormat(locale, DAY).format(new Date(time));
+}
+
+/** A month of this year as a group of items is headed by it: "October", "Octubre". */
+export function formatMonth(month: number, locale: string): string {
+  const name = dateFormat(locale, MONTH).format(new Date(2000, month, 1));
+  return name.charAt(0).toLocaleUpperCase(locale) + name.slice(1);
+}
+
+/** A year, in the locale's own digits. */
+export function formatYear(year: number, locale: string): string {
+  return dateFormat(locale, YEAR).format(new Date(year, 0, 1));
 }
 
 /** A share of a whole, as a progress reads: "45 %" or "45%", as the locale writes it. */

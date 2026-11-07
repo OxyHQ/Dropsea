@@ -5,6 +5,14 @@
  * without drawing it, so the view draws only the items that can be seen, and a
  * press, a rubber band or a drag finds the item under it by arithmetic.
  *
+ * Grouped (View › Group By), the items run in groups, each under a header row
+ * of its own and each starting a row of its own, as Finder's grid and list
+ * show them. Ungrouped, they are one run with no header: one model places
+ * both (`placeItems`, `placeGroups`), and every question about a place (an
+ * item's box, what lies between two heights, the item under a point, the
+ * item below another) is answered through it. A header is never an item: a
+ * press on one is a press on the background.
+ *
  * The view draws the same places as flex (`gridPlacement`): a column's share
  * of the width, a picture's square, so a window resizing moves the items in
  * the layout pass, with no JavaScript. Only what changes at a threshold of the
@@ -33,6 +41,10 @@ const PHOTO_GAP = 2;
 const COMPACT_ROW_HEIGHT = 28;
 const TOUCH_ROW_HEIGHT = 44;
 const TOUCH_LIST_BELOW = 600;
+/** A group's header: a row a little taller than the list's, and a band over a grid's icons. */
+const COMPACT_HEADER_HEIGHT = 32;
+const TOUCH_HEADER_HEIGHT = 44;
+const GRID_HEADER_HEIGHT = 36;
 
 /** How the items are arranged, and everything needed to place any one of them. */
 export interface ItemsGeometry {
@@ -47,6 +59,8 @@ export interface ItemsGeometry {
   /** Where the first item's box begins. */
   originX: number;
   originY: number;
+  /** A group's header's height, above its items. */
+  headerHeight: number;
 }
 
 /** How many columns a grid has at a width, for the arrows' steps down it. */
@@ -74,6 +88,7 @@ export function itemsGeometry(
       cellHeight: rowHeight,
       originX: 0,
       originY: 0,
+      headerHeight: rowHeight === TOUCH_ROW_HEIGHT ? TOUCH_HEADER_HEIGHT : COMPACT_HEADER_HEIGHT,
     };
   }
   const columns = gridColumns(width, layout);
@@ -89,6 +104,7 @@ export function itemsGeometry(
       cellHeight: size,
       originX: GRID_PADDING,
       originY: GRID_PADDING,
+      headerHeight: GRID_HEADER_HEIGHT,
     };
   }
   // The room left over is shared between the columns, as Finder spreads its
@@ -103,16 +119,109 @@ export function itemsGeometry(
     cellHeight: ICON_CELL.height,
     originX: GRID_PADDING,
     originY: GRID_PADDING,
+    headerHeight: GRID_HEADER_HEIGHT,
+  };
+}
+
+/**
+ * A run of items: a group under its header, or (ungrouped) all of them under
+ * none. Its rows begin at its own first column.
+ */
+export interface ItemsSection {
+  /** Which of the groups it is, in the order they were given (0, ungrouped). */
+  group: number;
+  /** Its first item's index among all the items, and how many it holds. */
+  start: number;
+  count: number;
+  /** Its header's top, or null where the items are not grouped. */
+  headerTop: number | null;
+  /** Where its first row begins, and that row's number among all the rows. */
+  top: number;
+  firstRow: number;
+  rows: number;
+}
+
+/** Where every item and header is: the geometry, and the items' runs in order. */
+export interface ItemsPlacement {
+  geometry: ItemsGeometry;
+  sections: readonly ItemsSection[];
+  count: number;
+  /** All the rows, every run's together. */
+  rows: number;
+  /** How tall the items and headers are altogether. */
+  height: number;
+}
+
+function placeSections(
+  geometry: ItemsGeometry,
+  counts: readonly number[],
+  hasHeaders: boolean,
+): ItemsPlacement {
+  const sections: ItemsSection[] = [];
+  let start = 0;
+  let firstRow = 0;
+  let y = geometry.originY;
+  for (const [group, count] of counts.entries()) {
+    // A group with nothing in it is not shown, as Finder shows none.
+    if (count <= 0) continue;
+    const rows = Math.ceil(count / geometry.columns);
+    const top = hasHeaders ? y + geometry.headerHeight : y;
+    sections.push({ group, start, count, headerTop: hasHeaders ? y : null, top, firstRow, rows });
+    start += count;
+    firstRow += rows;
+    y = top + rows * geometry.pitchY;
+  }
+  const last = sections.at(-1);
+  // The last row is as tall as an item, and the grid's padding closes it (the list has none).
+  const height = last
+    ? last.top + (last.rows - 1) * geometry.pitchY + geometry.cellHeight + geometry.originY
+    : 0;
+  return { geometry, sections, count: start, rows: firstRow, height };
+}
+
+/** The items in one run, ungrouped. */
+export function placeItems(geometry: ItemsGeometry, count: number): ItemsPlacement {
+  return placeSections(geometry, [count], false);
+}
+
+/** The items in groups of these sizes, in order, each under its header. */
+export function placeGroups(geometry: ItemsGeometry, sizes: readonly number[]): ItemsPlacement {
+  return placeSections(geometry, sizes, true);
+}
+
+/** Where the item at `index` is: its run, its row among all the rows, its column. */
+export function itemPlace(
+  placement: ItemsPlacement,
+  index: number,
+): { section: ItemsSection; row: number; column: number } | null {
+  const { sections, geometry } = placement;
+  // The last run starting at or before the index.
+  let low = 0;
+  let high = sections.length - 1;
+  while (low < high) {
+    const middle = Math.ceil((low + high) / 2);
+    const section = sections[middle];
+    if (section && section.start <= index) low = middle;
+    else high = middle - 1;
+  }
+  const section = sections[low];
+  if (!section || index < section.start || index >= section.start + section.count) return null;
+  const local = index - section.start;
+  return {
+    section,
+    row: section.firstRow + Math.floor(local / geometry.columns),
+    column: local % geometry.columns,
   };
 }
 
 /** The box the item at `index` is drawn in. */
-export function itemFrame(geometry: ItemsGeometry, index: number): Box {
-  const column = index % geometry.columns;
-  const row = Math.floor(index / geometry.columns);
+export function itemFrame(placement: ItemsPlacement, index: number): Box {
+  const { geometry } = placement;
+  const place = itemPlace(placement, index);
+  const row = place ? place.row - place.section.firstRow : 0;
   return {
-    x: geometry.originX + column * geometry.pitchX,
-    y: geometry.originY + row * geometry.pitchY,
+    x: geometry.originX + (place?.column ?? 0) * geometry.pitchX,
+    y: (place?.section.top ?? geometry.originY) + row * geometry.pitchY,
     width: geometry.cellWidth,
     height: geometry.cellHeight,
   };
@@ -123,9 +232,9 @@ export function itemFrame(geometry: ItemsGeometry, index: number): Box {
  * picture, but only an icon and its name in Finder's grid, whose cells' empty
  * corners are the background.
  */
-export function itemTargets(geometry: ItemsGeometry, index: number): Box[] {
-  const frame = itemFrame(geometry, index);
-  if (geometry.arrangement !== 'icons') return [frame];
+export function itemTargets(placement: ItemsPlacement, index: number): Box[] {
+  const frame = itemFrame(placement, index);
+  if (placement.geometry.arrangement !== 'icons') return [frame];
   const centre = frame.x + frame.width / 2;
   const labelTop = frame.y + ICON_BOX.top + ICON_BOX.size + ICON_LABEL.gap;
   return [
@@ -144,48 +253,48 @@ export function itemTargets(geometry: ItemsGeometry, index: number): Box[] {
   ];
 }
 
-/** How tall the items are altogether. */
-export function contentHeight(geometry: ItemsGeometry, count: number): number {
-  if (count === 0) return 0;
-  const rows = Math.ceil(count / geometry.columns);
-  const padding = geometry.arrangement === 'list' ? 0 : geometry.originY * 2;
-  return padding + (rows - 1) * geometry.pitchY + geometry.cellHeight;
-}
-
 /** The items from `start` up to (not including) `end`. */
 export interface IndexRange {
   start: number;
   end: number;
 }
 
-/** The items any part of which lies between `top` and `bottom`. */
-export function itemsBetween(
-  geometry: ItemsGeometry,
-  count: number,
-  top: number,
-  bottom: number,
-): IndexRange {
-  const firstRow = Math.max(0, Math.floor((top - geometry.originY) / geometry.pitchY));
-  const endRow = Math.max(0, Math.ceil((bottom - geometry.originY) / geometry.pitchY));
-  return {
-    start: Math.min(count, firstRow * geometry.columns),
-    end: Math.min(count, endRow * geometry.columns),
-  };
+/** The items any part of which lies between `top` and `bottom`: whole rows of each run. */
+export function itemsBetween(placement: ItemsPlacement, top: number, bottom: number): IndexRange {
+  const { geometry, sections } = placement;
+  const rowsBottom = (section: ItemsSection) =>
+    section.top + (section.rows - 1) * geometry.pitchY + geometry.cellHeight;
+  // The first run reaching below the top, from the row the top is in.
+  const first = sections.find((section) => rowsBottom(section) > top);
+  let start = placement.count;
+  if (first) {
+    const row = Math.max(0, Math.floor((top - first.top) / geometry.pitchY));
+    start = first.start + Math.min(first.count, row * geometry.columns);
+  }
+  // The last run starting above the bottom, to the row the bottom is in.
+  const last = sections.findLast((section) => section.top < bottom);
+  let end = 0;
+  if (last) {
+    const rows = Math.max(0, Math.ceil((bottom - last.top) / geometry.pitchY));
+    end = last.start + Math.min(last.count, rows * geometry.columns);
+  }
+  return { start, end: Math.max(start, end) };
 }
 
-/** The item a point is on, or null on the background between them. */
-export function itemAt(
-  geometry: ItemsGeometry,
-  count: number,
-  point: { x: number; y: number },
-): number | null {
+/** The item a point is on, or null on the background between them (a header among it). */
+export function itemAt(placement: ItemsPlacement, point: { x: number; y: number }): number | null {
+  const { geometry } = placement;
   const column =
     geometry.columns === 1 ? 0 : Math.floor((point.x - geometry.originX) / geometry.pitchX);
-  const row = Math.floor((point.y - geometry.originY) / geometry.pitchY);
-  if (row < 0 || column < 0 || column >= geometry.columns) return null;
-  const index = row * geometry.columns + column;
-  if (index >= count) return null;
-  const isOn = itemTargets(geometry, index).some(
+  if (column < 0 || column >= geometry.columns) return null;
+  const section = placement.sections.find(
+    (each) => point.y >= each.top && point.y < each.top + each.rows * geometry.pitchY,
+  );
+  if (!section) return null;
+  const local = Math.floor((point.y - section.top) / geometry.pitchY) * geometry.columns + column;
+  if (local >= section.count) return null;
+  const index = section.start + local;
+  const isOn = itemTargets(placement, index).some(
     (box) =>
       point.x >= box.x &&
       point.x < box.x + box.width &&
@@ -196,13 +305,54 @@ export function itemAt(
 }
 
 /** The items a rubber band touches, in the order they are shown. */
-export function itemsTouching(geometry: ItemsGeometry, count: number, band: Box): number[] {
-  const { start, end } = itemsBetween(geometry, count, band.y, band.y + band.height);
+export function itemsTouching(placement: ItemsPlacement, band: Box): number[] {
+  const { start, end } = itemsBetween(placement, band.y, band.y + band.height);
   const touched: number[] = [];
   for (let index = start; index < end; index += 1) {
-    if (itemTargets(geometry, index).some((box) => intersects(box, band))) touched.push(index);
+    if (itemTargets(placement, index).some((box) => intersects(box, band))) touched.push(index);
   }
   return touched;
+}
+
+/**
+ * Where the up or down arrow goes from the item at `index`, in groups of these
+ * sizes laid out `columns` across (one, a list): the same column a row up or
+ * down, into the next group's first row or the previous group's last, as
+ * Finder moves; a row shorter than the column, its last item. Past the last
+ * row the last item, and past the first the first, as Finder holds there.
+ */
+export function rowStep(
+  sizes: readonly number[],
+  columns: number,
+  index: number,
+  direction: 1 | -1,
+): number {
+  const groups = sizes.filter((size) => size > 0);
+  let start = 0;
+  let group = 0;
+  for (; group < groups.length; group += 1) {
+    const size = groups[group] ?? 0;
+    if (index < start + size) break;
+    start += size;
+  }
+  const size = groups[group];
+  if (size === undefined) return index;
+  const local = index - start;
+  const column = local % columns;
+  const row = Math.floor(local / columns);
+  if (direction > 0) {
+    if (row < Math.floor((size - 1) / columns)) {
+      return start + Math.min(size - 1, (row + 1) * columns + column);
+    }
+    const next = groups[group + 1];
+    if (next === undefined) return start + size - 1;
+    return start + size + Math.min(next - 1, column);
+  }
+  if (row > 0) return start + (row - 1) * columns + column;
+  const previous = groups[group - 1];
+  if (previous === undefined) return start;
+  const lastRow = Math.floor((previous - 1) / columns);
+  return start - previous + Math.min(previous - 1, lastRow * columns + column);
 }
 
 /** The widths at which what the view draws changes (`useMeasuredSizeClass` in the view). */

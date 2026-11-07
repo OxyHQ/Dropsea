@@ -10,7 +10,9 @@
  * Every item's place comes from the width alone (`lib/items-layout`), so the
  * view draws only the items near what can be seen, however many the folder
  * holds, and one handler on the items' area finds the item under a press by
- * arithmetic: an item carries no handler, menu or responder of its own. One
+ * arithmetic: an item carries no handler, menu or responder of its own.
+ * Grouped (View › Group By), each group is under a header of its own and
+ * starts a row of its own; the same arithmetic places them. One
  * context menu serves the area: it opens for the item pressed (with the
  * selection it is in), or for the place where the press found none.
  *
@@ -68,24 +70,28 @@ import {
   View,
 } from 'react-native';
 import type { ViewMode } from '@/components/BrowserProvider';
+import { GroupHeader } from '@/components/GroupHeader';
 import { ItemCell } from '@/components/ItemCell';
 import { ItemRow, type RenameHandlers } from '@/components/ItemRow';
 import { ListHeader } from '@/components/ListHeader';
 import type { Item } from '@/lib/items';
 import {
   columnWidthRange,
-  contentHeight,
   GRID_INSET,
   gridColumns,
+  type ItemsGeometry,
   type ItemsLayout,
   itemAt,
   itemFrame,
+  itemPlace,
   itemsBetween,
   itemsGeometry,
   itemsTouching,
   layoutWidthThresholds,
   listColumns,
   PHOTO_SPACING,
+  placeGroups,
+  placeItems,
 } from '@/lib/items-layout';
 import {
   type Box,
@@ -101,7 +107,7 @@ import {
   type Selection,
   selectOnly,
 } from '@/lib/selection';
-import type { SortColumn, SortOrder } from '@/lib/sorting';
+import type { ItemGroup, SortColumn, SortOrder } from '@/lib/sorting';
 import type { ItemTag, TagStyle } from '@/lib/tags';
 
 /** What the items take dropped from any application: files, moved or (with Option) copied. */
@@ -154,6 +160,11 @@ interface OpenMenu {
 
 export interface ItemsViewProps {
   items: readonly Item[];
+  /**
+   * The items' groups (View › Group By), `items` being theirs in order; null
+   * ungrouped. Photos' grid is never grouped (`groupingFor`).
+   */
+  groups: readonly ItemGroup<Item>[] | null;
   mode: ViewMode;
   layout: ItemsLayout;
   label: string;
@@ -202,6 +213,7 @@ export interface ItemsViewProps {
 
 export function ItemsView({
   items,
+  groups,
   mode,
   layout,
   label,
@@ -262,6 +274,15 @@ export function ItemsView({
   // the width, so the rows drawn are those either end of the columns' widths
   // could show.
   const geometry = itemsGeometry(mode, layout, width, isPointerDriven);
+  /** Where every item and group header is at a geometry. */
+  const placeAt = (at: ItemsGeometry) =>
+    groups
+      ? placeGroups(
+          at,
+          groups.map((group) => group.items.length),
+        )
+      : placeItems(at, items.length);
+  const placement = placeAt(geometry);
   const columnsShown = listColumns(width);
   const screen = viewport.height + VIEWPORT_STEP;
   const stepHeight = Math.max(1, Math.floor(screen / 2));
@@ -272,24 +293,22 @@ export function ItemsView({
     geometry.arrangement === 'photos'
       ? {
           start: itemsBetween(
-            itemsGeometry(mode, layout, widths.most - 1, isPointerDriven),
-            items.length,
+            placeAt(itemsGeometry(mode, layout, widths.most - 1, isPointerDriven)),
             drawnTop,
             drawnBottom,
           ).start,
           end: itemsBetween(
-            itemsGeometry(mode, layout, widths.least, isPointerDriven),
-            items.length,
+            placeAt(itemsGeometry(mode, layout, widths.least, isPointerDriven)),
             drawnTop,
             drawnBottom,
           ).end,
         }
-      : itemsBetween(geometry, items.length, drawnTop, drawnBottom);
-  const height = contentHeight(geometry, items.length);
-  const rowCount = Math.ceil(items.length / geometry.columns);
+      : itemsBetween(placement, drawnTop, drawnBottom);
+  const height = placement.height;
+  const rowCount = placement.rows;
   /** The places at the exact width, for what acts on them (a press, a band, a key). */
-  const exactGeometry = () =>
-    itemsGeometry(mode, layout, area.read()?.width ?? width, isPointerDriven);
+  const exactPlacement = () =>
+    placeAt(itemsGeometry(mode, layout, area.read()?.width ?? width, isPointerDriven));
 
   const rename: RenameHandlers = { onText: onRenameText, onDone: onRenameDone };
 
@@ -363,7 +382,7 @@ export function ItemsView({
   });
 
   const itemAtPoint = (point: { x: number; y: number }): Item | null => {
-    const index = itemAt(exactGeometry(), items.length, point);
+    const index = itemAt(exactPlacement(), point);
     return index === null ? null : (items[index] ?? null);
   };
   const draggedItems = (keys: readonly string[]) => items.filter((item) => keys.includes(item.key));
@@ -417,6 +436,8 @@ export function ItemsView({
     }
     if (button !== 0 || type !== 'mouse') return;
     if (!item) {
+      // A press between two clicks on an item (the background, a group's header) parts them.
+      lastPress.current = NO_PRESS;
       isBandAdding.current = shiftKey || isToggling;
       if (!isBandAdding.current) onSelectionChange(() => NO_SELECTION);
       return;
@@ -555,7 +576,7 @@ export function ItemsView({
     }
     const box = boxBetween(now.start, point);
     setBand(box);
-    const touched = itemsTouching(exactGeometry(), items.length, box).flatMap((index) => {
+    const touched = itemsTouching(exactPlacement(), box).flatMap((index) => {
       const item = items[index];
       return item ? [item.key] : [];
     });
@@ -659,17 +680,24 @@ export function ItemsView({
   // The item the keys moved to is brought into view, as Finder scrolls to it.
   // Where it is, at the exact width and height when the focus moves.
   const focusIndex = selection.focus ? items.findIndex((item) => item.key === selection.focus) : -1;
-  const latestGeometry = useRef(exactGeometry);
+  const latestPlacement = useRef(exactPlacement);
   useLayoutEffect(() => {
-    latestGeometry.current = exactGeometry;
+    latestPlacement.current = exactPlacement;
   });
   useEffect(() => {
     const visibleHeight = viewport.read()?.height ?? 0;
     if (focusIndex < 0 || visibleHeight === 0) return;
-    const frame = itemFrame(latestGeometry.current(), focusIndex);
+    const now = latestPlacement.current();
+    const frame = itemFrame(now, focusIndex);
+    // An item of a group's first row comes into view with the group's header.
+    const place = itemPlace(now, focusIndex);
+    const shownFrom =
+      place && place.row === place.section.firstRow
+        ? (place.section.headerTop ?? frame.y)
+        : frame.y;
     const top = scrollTop.current;
-    if (frame.y < top) {
-      scroller.current?.scrollTo({ y: frame.y, animated: false });
+    if (shownFrom < top) {
+      scroller.current?.scrollTo({ y: shownFrom, animated: false });
     } else if (frame.y + frame.height > top + visibleHeight) {
       scroller.current?.scrollTo({ y: frame.y + frame.height - visibleHeight, animated: false });
     }
@@ -678,7 +706,8 @@ export function ItemsView({
   const menuItem = menu?.key ? items.find((item) => item.key === menu.key) : undefined;
 
   const renderItem = (item: Item, index: number) => {
-    const frame = itemFrame(geometry, index);
+    const frame = itemFrame(placement, index);
+    const place = itemPlace(placement, index);
     const isItemSelected = isSelected(selection, item.key);
     const thumbnailUrl = thumbnails.get(item.key) ?? null;
     const isDropTarget = drag?.over === item.key || dropOver === item.key;
@@ -690,7 +719,7 @@ export function ItemsView({
           item={item}
           top={frame.y}
           height={frame.height}
-          isStriped={index % 2 === 1}
+          isStriped={place !== null && (index - place.section.start) % 2 === 1}
           isSelected={isItemSelected}
           isDimmed={dimmedKeys.has(item.key)}
           isWindowActive={isWindowActive}
@@ -711,7 +740,7 @@ export function ItemsView({
     }
     // A column's start and its share of the grid's width (inside its inset):
     // Yoga places it as the width changes.
-    const column = index % geometry.columns;
+    const column = place?.column ?? 0;
     return (
       <ItemCell
         key={item.key}
@@ -721,7 +750,7 @@ export function ItemsView({
         top={frame.y}
         width={`${100 / geometry.columns}%`}
         height={frame.height}
-        layer={rowCount - Math.floor(index / geometry.columns)}
+        layer={rowCount - (place?.row ?? 0)}
         isSelected={isItemSelected}
         isDimmed={dimmedKeys.has(item.key)}
         isWindowActive={isWindowActive}
@@ -737,6 +766,27 @@ export function ItemsView({
       />
     );
   };
+
+  // The headers of the groups near what can be seen.
+  const renderHeaders = () =>
+    groups
+      ? placement.sections.flatMap((section) => {
+          const group = groups[section.group];
+          const top = section.headerTop;
+          if (!group || top === null) return [];
+          if (top + geometry.headerHeight < drawnTop || top > drawnBottom) return [];
+          return [
+            <GroupHeader
+              key={`group-${group.key}`}
+              heading={group.heading}
+              tagStyle={tagStyle}
+              top={top}
+              height={geometry.headerHeight}
+              isList={geometry.arrangement === 'list'}
+            />,
+          ];
+        })
+      : null;
 
   /**
    * Photos' grid, as rows of squares in the flow: each square a column's share
@@ -868,14 +918,18 @@ export function ItemsView({
                         right: GRID_INSET,
                       }}
                     >
+                      {renderHeaders()}
                       {items
                         .slice(drawn.start, drawn.end)
                         .map((item, offset) => renderItem(item, drawn.start + offset))}
                     </View>
                   ) : (
-                    items
-                      .slice(drawn.start, drawn.end)
-                      .map((item, offset) => renderItem(item, drawn.start + offset))
+                    <>
+                      {renderHeaders()}
+                      {items
+                        .slice(drawn.start, drawn.end)
+                        .map((item, offset) => renderItem(item, drawn.start + offset))}
+                    </>
                   )}
                   {items.length === 0 ? (
                     <View

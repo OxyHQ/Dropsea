@@ -1,6 +1,21 @@
 import { describe, expect, test } from 'bun:test';
-import { formatDate, formatDay, formatPercent, formatSize } from '@/lib/format';
+import {
+  formatDate,
+  formatDay,
+  formatMonth,
+  formatPercent,
+  formatSize,
+  formatYear,
+} from '@/lib/format';
 import { stringsFor } from '@/lib/strings';
+
+describe('the headers of groups by date', () => {
+  test('a month by its name, capitalised as a header is; a year in the locale’s digits', () => {
+    expect(formatMonth(9, 'en')).toBe('October');
+    expect(formatMonth(9, 'es')).toBe('Octubre');
+    expect(formatYear(2025, 'en')).toBe('2025');
+  });
+});
 
 describe('sizes', () => {
   test('read in decimal units, one decimal under ten', () => {

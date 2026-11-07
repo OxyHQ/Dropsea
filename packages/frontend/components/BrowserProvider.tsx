@@ -20,7 +20,7 @@ import {
 } from '@/lib/history';
 import { type Location, sameLocation } from '@/lib/items';
 import { hrefFor, locationFromRoute } from '@/lib/routes';
-import { NAME_ORDER, type SortOrder } from '@/lib/sorting';
+import { type Grouping, NAME_ORDER, type SortOrder } from '@/lib/sorting';
 
 export type ViewMode = 'icons' | 'list';
 
@@ -47,6 +47,13 @@ interface BrowserValue {
   setViewMode: (location: Location, mode: ViewMode) => void;
   orderFor: (location: Location) => SortOrder;
   setOrder: (location: Location, order: SortOrder) => void;
+  /**
+   * What a place's items are grouped by (View › Group By), the sort applying
+   * within each group; null where they never are: Photos and the albums, as
+   * Photos has no Group By.
+   */
+  groupingFor: (location: Location) => Grouping | null;
+  setGrouping: (grouping: Grouping) => void;
   isShowingHidden: boolean;
   setShowingHidden: (isShowing: boolean) => void;
   isNewAlbumOpen: boolean;
@@ -84,6 +91,8 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     files: NAME_ORDER,
     media: { column: 'date', direction: 'descending' },
   });
+  // Ungrouped, as Finder starts.
+  const [grouping, setGrouping] = useState<Grouping>('none');
   const [cameFrom, setCameFrom] = useState<Location | null>(null);
   const [isShowingHidden, setShowingHidden] = useState(false);
   const [isNewAlbumOpen, setNewAlbumOpen] = useState(false);
@@ -131,6 +140,8 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
       const family = familyOf(place);
       setOrders((known) => ({ ...known, [family]: next }));
     },
+    groupingFor: (place) => (familyOf(place) === 'files' ? grouping : null),
+    setGrouping,
     isShowingHidden,
     setShowingHidden,
     isNewAlbumOpen,
