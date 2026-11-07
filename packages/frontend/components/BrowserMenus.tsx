@@ -92,6 +92,8 @@ export function BrowserMenus({
   onShowingHidden,
   isPreviewShown,
   onPreviewShown,
+  isPathBarShown,
+  onPathBarShown,
   canGoBack,
   canGoForward,
   onBack,
@@ -114,6 +116,8 @@ export function BrowserMenus({
   onShowingHidden: (isShowing: boolean) => void;
   isPreviewShown: boolean;
   onPreviewShown: (isShown: boolean) => void;
+  isPathBarShown: boolean;
+  onPathBarShown: (isShown: boolean) => void;
   canGoBack: boolean;
   canGoForward: boolean;
   onBack: () => void;
@@ -375,6 +379,9 @@ export function BrowserMenus({
           <MenubarSeparator />
           <MenubarItem shortcut="Mod+Shift+P" onPress={() => onPreviewShown(!isPreviewShown)}>
             {isPreviewShown ? strings.menus.hidePreview : strings.menus.showPreview}
+          </MenubarItem>
+          <MenubarItem shortcut="Mod+Alt+P" onPress={() => onPathBarShown(!isPathBarShown)}>
+            {isPathBarShown ? strings.menus.hidePathBar : strings.menus.showPathBar}
           </MenubarItem>
           {navigationDock.available ? (
             <>

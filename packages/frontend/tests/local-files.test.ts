@@ -110,7 +110,7 @@ describe('files on this device', () => {
     const items = local
       .listFolder(uri(''))
       .filter((item) => item.name === 'notes.md' || item.name === 'todo.txt');
-    const outcomes = await local.moveItems(items, uri('Documents'));
+    const outcomes = await local.relocateItems(items, uri('Documents'), 'move');
     expect(outcomes.find((outcome) => outcome.key.endsWith('notes.md'))).toMatchObject({
       ok: false,
       problem: 'exists',

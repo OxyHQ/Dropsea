@@ -54,10 +54,34 @@ abstract class Entry {
     this.uri = uriOf(next, this instanceof Directory);
   }
 
-  async move(destination: Directory): Promise<void> {
-    const next = path.join(pathOf(destination.uri), this.name);
+  /**
+   * Where a copy or a move goes, as OxyOS's file service (and Android's) decides it: into a
+   * folder that is there, under the item's name; a folder to a folder not there yet, as it; a
+   * file to a file, as it. Never over an item there.
+   */
+  protected targetOf(destination: Directory | File): string {
+    const to = pathOf(destination.uri).replace(/\/+$/, '');
+    const found = fs.statSync(to, { throwIfNoEntry: false });
+    const isInto = destination instanceof Directory && found?.isDirectory() === true;
+    if (this instanceof Directory && destination instanceof File) {
+      throw new Error('A folder cannot be copied or moved to a file');
+    }
+    const target = isInto ? path.join(to, this.name) : to;
+    if (fs.existsSync(target)) throw new Error(`Destination already exists: ${target}`);
+    if (!fs.statSync(path.dirname(target), { throwIfNoEntry: false })?.isDirectory()) {
+      throw new Error(`The destination path does not exist: ${target}`);
+    }
+    return target;
+  }
+
+  async move(destination: Directory | File): Promise<void> {
+    const next = this.targetOf(destination);
     fs.renameSync(this.target, next);
     this.uri = uriOf(next, this instanceof Directory);
+  }
+
+  async copy(destination: Directory | File): Promise<void> {
+    fs.cpSync(this.target, this.targetOf(destination), { recursive: true });
   }
 }
 
@@ -154,4 +178,21 @@ export function pathsAt(documentFolder: string) {
       return new Directory(uriOf(documentFolder, true));
     },
   };
+}
+
+/**
+ * A platform's Trash (`usePlatformFiles().trash`) in a folder a test makes: each item moved into
+ * it, under a name of its own there, as OxyOS's Trash keeps several of one name.
+ */
+export function trashAt(trashFolder: string) {
+  let number = 0;
+  return async (uris: readonly string[]) =>
+    uris.map((uri) => {
+      const target = pathOf(uri).replace(/\/+$/, '');
+      if (!fs.existsSync(target)) return { uri, ok: false as const, error: 'not-found' as const };
+      number++;
+      const trashed = path.join(trashFolder, `${number} ${path.basename(target)}`);
+      fs.renameSync(target, trashed);
+      return { uri, ok: true as const, result: uriOf(trashed, false) };
+    });
 }

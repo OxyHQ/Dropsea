@@ -3,7 +3,8 @@
  * as Photos shows them) or a list whose columns sort, with the pointer's ways
  * of choosing them. A click selects, Shift extends, ⌘ or Ctrl adds or
  * removes, a double click opens; a rubber band from the background selects
- * what it touches; selected items dragged onto a folder or an album go there.
+ * what it touches; selected items dragged onto a folder or an album go there,
+ * and a folder held under a drag springs open (OxyOS ADR 0047, decision 14).
  * A touch opens what it taps and scrolls as a phone's lists do; a long press
  * (or the secondary button) opens the menu for what it is on.
  *
@@ -74,6 +75,7 @@ import { GroupHeader } from '@/components/GroupHeader';
 import { ItemCell } from '@/components/ItemCell';
 import { ItemRow, type RenameHandlers } from '@/components/ItemRow';
 import { ListHeader } from '@/components/ListHeader';
+import { useSpringLoading } from '@/hooks/use-spring-loading';
 import type { Item } from '@/lib/items';
 import {
   columnWidthRange,
@@ -110,7 +112,11 @@ import {
 import type { ItemGroup, SortColumn, SortOrder } from '@/lib/sorting';
 import type { ItemTag, TagStyle } from '@/lib/tags';
 
-/** What the items take dropped from any application: files, moved or (with Option) copied. */
+/**
+ * What the items take dropped from any application: files, moved or copied into the folder under
+ * the pointer (else the one shown), whichever the platform prefers for that folder's volume
+ * (`DropZone.folder`), Option forcing a copy and Command a move.
+ */
 const DROP_ACCEPT = ['files'] as const;
 const DROP_ACTIONS = ['move', 'copy'] as const;
 const FILL = { flex: 1 } as const;
@@ -194,6 +200,8 @@ export interface ItemsViewProps {
    */
   dropFolderFor?: (target: Item | null) => string | null;
   onDropFiles?: (uris: readonly string[], folderUri: string, action: 'copy' | 'move') => void;
+  /** A folder held under a drag of files springs open in the window. */
+  onSpringOpen?: (folder: Item) => void;
   onAction: (item: Item, action: string) => void;
   /** An item's actions for assistive technology; the same list for items alike. */
   itemActions: (item: Item) => readonly AccessibilityActionInfo[];
@@ -236,6 +244,7 @@ export function ItemsView({
   onDrop,
   dropFolderFor,
   onDropFiles,
+  onSpringOpen,
   onAction,
   itemActions,
   menus,
@@ -268,6 +277,11 @@ export function ItemsView({
   // place to drop them, lit or taking the drop, as none of what Finder drags is.
   const platformDragged = useRef<readonly string[]>([]);
   const [menu, setMenu] = useState<OpenMenu | null>(null);
+  // A folder held under a drag of files springs open, the folder lit (and blinking) meanwhile.
+  const { spring, isUnlit: isSpringUnlit } = useSpringLoading((key) => {
+    const folder = items.find((item) => item.key === key);
+    if (folder) onSpringOpen?.(folder);
+  });
 
   // What is drawn: the columns and rows at the width's threshold (a column's
   // place is its share of the width, `renderItem`). A picture's square follows
@@ -647,17 +661,27 @@ export function ItemsView({
       ? target
       : null;
   };
+  // Where a drop goes now: the folder under the pointer, else the one shown. The platform prefers
+  // a move or a copy by its volume, and answers again as it changes.
+  const dropOverItem = dropOver ? (items.find((item) => item.key === dropOver) ?? null) : null;
+  const dropFolder = dropFolderFor?.(dropOverItem) ?? null;
   const canTakeDrops =
     !!onDropFiles &&
     !!dropFolderFor &&
     (dropFolderFor(null) !== null ||
       items.some((item) => item.source === 'local' && item.isFolder));
   const handleDropOver = (event: DropTargetDragEvent) => {
-    setDropOver(dropTargetOf(event)?.key ?? null);
+    const target = dropTargetOf(event);
+    setDropOver(target?.key ?? null);
+    spring.hover(target && event.action && onSpringOpen ? target.key : null);
   };
-  const handleDropLeave = () => setDropOver(null);
+  const handleDropLeave = () => {
+    setDropOver(null);
+    spring.cancel();
+  };
   const handleDropFiles = ({ action, data, ...at }: DropTargetDropEvent) => {
     setDropOver(null);
+    spring.cancel();
     const folder = dropFolderFor?.(dropTargetOf({ ...at, action, kinds: at.kinds }));
     const uris = data.files.flatMap((file) => (file.uri ? [file.uri] : []));
     if (!folder || uris.length === 0 || action === 'link') return;
@@ -710,7 +734,7 @@ export function ItemsView({
     const place = itemPlace(placement, index);
     const isItemSelected = isSelected(selection, item.key);
     const thumbnailUrl = thumbnails.get(item.key) ?? null;
-    const isDropTarget = drag?.over === item.key || dropOver === item.key;
+    const isDropTarget = drag?.over === item.key || (dropOver === item.key && !isSpringUnlit);
     const itemRename = renamingKey === item.key ? rename : null;
     if (mode === 'list') {
       return (
@@ -873,6 +897,7 @@ export function ItemsView({
           <DropZone
             accept={DROP_ACCEPT}
             actions={DROP_ACTIONS}
+            folder={dropFolder ?? undefined}
             disabled={!canTakeDrops}
             onDragEnter={handleDropOver}
             onDragOver={handleDropOver}

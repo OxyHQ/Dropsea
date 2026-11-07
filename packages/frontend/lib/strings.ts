@@ -38,6 +38,7 @@ const en = {
   back: 'Back',
   forward: 'Forward',
   path: 'Path',
+  computer: 'Computer',
   resizePreview: 'Resize the preview',
   noSelection: 'No selection',
   view: 'View',
@@ -202,12 +203,18 @@ const en = {
       count === 1 ? `Undo Move of “${name}”` : `Undo Move of ${count} Items`,
     redoMove: (count: number, name: string) =>
       count === 1 ? `Redo Move of “${name}”` : `Redo Move of ${count} Items`,
+    undoCopy: (count: number, name: string) =>
+      count === 1 ? `Undo Copy of “${name}”` : `Undo Copy of ${count} Items`,
+    redoCopy: (count: number, name: string) =>
+      count === 1 ? `Redo Copy of “${name}”` : `Redo Copy of ${count} Items`,
     selectAll: 'Select All',
     showHidden: 'Show Hidden Files',
     showSidebar: 'Show Sidebar',
     hideSidebar: 'Hide Sidebar',
     showPreview: 'Show Preview',
     hidePreview: 'Hide Preview',
+    showPathBar: 'Show Path Bar',
+    hidePathBar: 'Hide Path Bar',
     sortBy: 'Sort By',
     enclosing: 'Enclosing Folder',
     signIn: 'Sign In…',
@@ -281,6 +288,18 @@ const en = {
       count === 1
         ? 'One item is not a photo Dropsea can read, and was not added.'
         : `${count} items are not photos Dropsea can read, and were not added.`,
+    relocating: (relocation: 'copy' | 'move', count: number, folder: string) =>
+      `${relocation === 'copy' ? 'Copying' : 'Moving'} ${count === 1 ? '1 item' : `${count} items`} to “${folder}”`,
+    stopping: 'Stopping…',
+    stop: 'Stop',
+  },
+  clash: {
+    title: (name: string, relocation: 'copy' | 'move') =>
+      `An item named “${name}” already exists in this location. Do you want to replace it with the one you’re ${relocation === 'copy' ? 'copying' : 'moving'}?`,
+    keepBoth: 'Keep Both',
+    stop: 'Stop',
+    replace: 'Replace',
+    applyToAll: 'Apply to All',
   },
   preview: {
     kind: 'Kind',
@@ -338,6 +357,7 @@ const es: Strings = {
   back: 'Atrás',
   forward: 'Adelante',
   path: 'Ruta',
+  computer: 'Ordenador',
   resizePreview: 'Cambiar el ancho de la vista previa',
   noSelection: 'Sin selección',
   view: 'Visualización',
@@ -504,12 +524,18 @@ const es: Strings = {
       count === 1
         ? `Rehacer el traslado de «${name}»`
         : `Rehacer el traslado de ${count} elementos`,
+    undoCopy: (count, name) =>
+      count === 1 ? `Deshacer la copia de «${name}»` : `Deshacer la copia de ${count} elementos`,
+    redoCopy: (count, name) =>
+      count === 1 ? `Rehacer la copia de «${name}»` : `Rehacer la copia de ${count} elementos`,
     selectAll: 'Seleccionar todo',
     showHidden: 'Mostrar archivos ocultos',
     showSidebar: 'Mostrar barra lateral',
     hideSidebar: 'Ocultar barra lateral',
     showPreview: 'Mostrar vista previa',
     hidePreview: 'Ocultar vista previa',
+    showPathBar: 'Mostrar barra de ruta',
+    hidePathBar: 'Ocultar barra de ruta',
     sortBy: 'Ordenar por',
     enclosing: 'Carpeta contenedora',
     signIn: 'Iniciar sesión…',
@@ -593,6 +619,18 @@ const es: Strings = {
       count === 1
         ? 'Un elemento no es una foto que Dropsea pueda leer y no se ha añadido.'
         : `${count} elementos no son fotos que Dropsea pueda leer y no se han añadido.`,
+    relocating: (relocation, count, folder) =>
+      `${relocation === 'copy' ? 'Copiando' : 'Trasladando'} ${count === 1 ? '1 elemento' : `${count} elementos`} a «${folder}»`,
+    stopping: 'Deteniendo…',
+    stop: 'Detener',
+  },
+  clash: {
+    title: (name, relocation) =>
+      `Ya hay un elemento llamado «${name}» en esta ubicación. ¿Quieres reemplazarlo por el que estás ${relocation === 'copy' ? 'copiando' : 'trasladando'}?`,
+    keepBoth: 'Conservar ambos',
+    stop: 'Detener',
+    replace: 'Reemplazar',
+    applyToAll: 'Aplicar a todos',
   },
   preview: {
     kind: 'Clase',

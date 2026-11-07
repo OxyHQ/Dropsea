@@ -5,12 +5,13 @@
  * nothing here is called.
  *
  * A change never replaces an item: a name already taken in the folder is
- * refused before the file system is asked.
+ * refused before the file system is asked. (A drop's Replace puts the item
+ * there in the Trash first, `lib/transfer`.)
  */
 import { requireOptionalNativeModule } from 'expo';
 import { Directory, File, Paths } from 'expo-file-system';
 import { type LocalItem, localItem } from '@/lib/items';
-import { isSameUri } from '@/lib/local-places';
+import { parentUri, uriName } from '@/lib/local-places';
 import { type NameProblem, nameProblem } from '@/lib/names';
 import type { FileProblem } from '@/lib/strings';
 
@@ -133,15 +134,51 @@ export function renameItem(item: LocalItem, folderUri: string, name: string): Lo
   }
 }
 
+/** A move or a copy of items, as Finder's drop does one. */
+export type Relocation = 'copy' | 'move';
+
 /**
- * Moves items into a folder, each on its own: one that would replace an item there is refused.
- * One outcome per item, in their order.
+ * Moves or copies one item into a folder under `name` (its own, or the free one Keep Both gave
+ * it), never over an item there: one there by then is refused. Its outcome, with where it went.
  */
-export async function moveItems(
+export async function relocateItem(
+  item: LocalItem,
+  folderUri: string,
+  name: string,
+  relocation: Relocation,
+): Promise<LocalOutcome> {
+  const entry = entryAt(item);
+  // A folder goes to a folder not there yet, as it; a file to a file, as it (the file service's
+  // rules, OxyOS's as Android's).
+  const target = item.isFolder ? new Directory(folderUri, name) : new File(folderUri, name);
+  if (new Directory(folderUri, name).exists || new File(folderUri, name).exists) {
+    return { key: item.key, ok: false, problem: 'exists' };
+  }
+  try {
+    if (relocation === 'move') {
+      await entry.move(target);
+      return { key: item.key, ok: true, uri: entry.uri };
+    }
+    await entry.copy(target);
+    return { key: item.key, ok: true, uri: target.uri };
+  } catch (error) {
+    return {
+      key: item.key,
+      ok: false,
+      problem: problemOf(error, entry, relocation === 'move' ? 'move an item' : 'copy an item'),
+    };
+  }
+}
+
+/**
+ * Moves or copies items into a folder, each on its own and under its own name: one that would
+ * replace an item there is refused. One outcome per item, in their order.
+ */
+export async function relocateItems(
   items: readonly LocalItem[],
   folderUri: string,
+  relocation: Relocation,
 ): Promise<LocalOutcome[]> {
-  const destination = new Directory(folderUri);
   const taken = namesIn(folderUri);
   const outcomes: LocalOutcome[] = [];
   for (const item of items) {
@@ -149,26 +186,24 @@ export async function moveItems(
       outcomes.push({ key: item.key, ok: false, problem: 'exists' });
       continue;
     }
-    const entry = entryAt(item);
-    try {
-      await entry.move(destination);
-      taken.push(item.name);
-      outcomes.push({ key: item.key, ok: true, uri: entry.uri });
-    } catch (error) {
-      outcomes.push({ key: item.key, ok: false, problem: problemOf(error, entry, 'move an item') });
-    }
+    const outcome = await relocateItem(item, folderUri, item.name, relocation);
+    if (outcome.ok) taken.push(item.name);
+    outcomes.push(outcome);
   }
   return outcomes;
 }
 
-/** An item moved: its URI before, and after. */
-export interface Moved {
+/** An item moved or copied: its URI before (the original's, for a copy), and after (the copy's). */
+export interface Relocated {
   from: string;
   to: string;
 }
 
-/** The moves `moveItems` did, of `items` (in the order it was given them) to their outcomes. */
-export function movesDone(items: readonly LocalItem[], outcomes: readonly LocalOutcome[]): Moved[] {
+/** What `relocateItems` did, of `items` (in the order it was given them) to their outcomes. */
+export function relocationsDone(
+  items: readonly LocalItem[],
+  outcomes: readonly LocalOutcome[],
+): Relocated[] {
   return items.flatMap((item, index) => {
     const outcome = outcomes[index];
     return outcome?.ok ? [{ from: item.uri, to: outcome.uri }] : [];
@@ -176,65 +211,33 @@ export function movesDone(items: readonly LocalItem[], outcomes: readonly LocalO
 }
 
 /**
- * Moves each item at `uri` into its folder `into`, as `moveItems` does (never over an item
- * there): what came of each, and the moves done. An item no longer there, or whose folder is no
- * longer there, is not found.
+ * Moves or copies the item at each `from` to its `to` (into that folder, under that name), as Undo
+ * and Redo do a change again, never over an item there: what came of each, and what was done. An
+ * item no longer there, or whose folder is no longer there, is not found.
  */
-export async function moveEach(
-  requests: readonly { uri: string; into: string }[],
-): Promise<{ outcomes: LocalOutcome[]; moved: Moved[] }> {
+export async function relocateEach(
+  requests: readonly Relocated[],
+  relocation: Relocation,
+): Promise<{ outcomes: LocalOutcome[]; done: Relocated[] }> {
   const outcomes: LocalOutcome[] = [];
-  const moved: Moved[] = [];
-  const folders = new Map<string, string[]>();
-  for (const { uri, into } of requests) folders.set(into, [...(folders.get(into) ?? []), uri]);
-  for (const [into, uris] of folders) {
-    if (!folderExists(into)) {
-      for (const uri of uris) outcomes.push({ key: uri, ok: false, problem: 'not-found' });
+  const done: Relocated[] = [];
+  for (const { from, to } of requests) {
+    const into = parentUri(to);
+    const name = uriName(to);
+    const [item] = itemsAtUris([from]);
+    if (!item || !folderExists(into)) {
+      outcomes.push({ key: from, ok: false, problem: 'not-found' });
       continue;
     }
-    const items = itemsAtUris(uris);
-    for (const uri of uris) {
-      if (!items.some((item) => isSameUri(item.uri, uri))) {
-        outcomes.push({ key: uri, ok: false, problem: 'not-found' });
-      }
-    }
-    const done = await moveItems(items, into);
-    outcomes.push(...done);
-    moved.push(...movesDone(items, done));
-  }
-  return { outcomes, moved };
-}
-
-/**
- * Copies items into a folder, each as itself (a folder with what it holds), never over an item
- * there: a name already taken is refused.
- */
-export async function copyItems(
-  items: readonly LocalItem[],
-  folderUri: string,
-): Promise<LocalOutcome[]> {
-  const destination = new Directory(folderUri);
-  const taken = namesIn(folderUri);
-  const outcomes: LocalOutcome[] = [];
-  for (const item of items) {
-    if (nameProblem(item.name, taken) === 'taken') {
+    if (nameProblem(name, namesIn(into)) === 'taken') {
       outcomes.push({ key: item.key, ok: false, problem: 'exists' });
       continue;
     }
-    const entry = entryAt(item);
-    try {
-      await entry.copy(destination);
-      taken.push(item.name);
-      outcomes.push({
-        key: item.key,
-        ok: true,
-        uri: `${folderUri.replace(/\/+$/, '')}/${encodeURIComponent(item.name)}`,
-      });
-    } catch (error) {
-      outcomes.push({ key: item.key, ok: false, problem: problemOf(error, entry, 'copy an item') });
-    }
+    const outcome = await relocateItem(item, into, name, relocation);
+    outcomes.push(outcome);
+    if (outcome.ok) done.push({ from: item.uri, to: outcome.uri });
   }
-  return outcomes;
+  return { outcomes, done };
 }
 
 /**

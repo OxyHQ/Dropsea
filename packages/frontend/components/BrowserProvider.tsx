@@ -2,10 +2,13 @@
  * The window's own state, kept across the places it shows: where it is (the
  * route) and was (back and forward), how it shows items (icons or a list,
  * per kind of place), their order, whether hidden files show, and the album
- * name dialog the sidebar and the menus open, and its preview pane; as the
- * file chooser's save panel, the name being typed, kept as it goes from
- * folder to folder.
+ * name dialog the sidebar and the menus open, its preview pane and path bar;
+ * as the file chooser's save panel, the name being typed, kept as it goes from
+ * folder to folder. And where it goes back to when a folder sprang open under
+ * a drag that then exits the window without a drop in it (OxyOS ADR 0047,
+ * decision 14).
  */
+import { useWindowDrag } from '@oxy.so/bloom/drop-zone';
 import { usePlatformFiles } from '@oxy.so/bloom/platform-surface';
 import { router, useGlobalSearchParams, usePathname } from 'expo-router';
 import { createContext, type ReactNode, use, useState } from 'react';
@@ -21,6 +24,7 @@ import {
 import { type Location, sameLocation } from '@/lib/items';
 import { hrefFor, locationFromRoute } from '@/lib/routes';
 import { type Grouping, NAME_ORDER, type SortOrder } from '@/lib/sorting';
+import { SpringBack } from '@/lib/spring-loading';
 
 export type ViewMode = 'icons' | 'list';
 
@@ -67,6 +71,11 @@ interface BrowserValue {
   /** The preview pane's width, as the person last dragged it, in every place. */
   previewWidth: number;
   setPreviewWidth: (width: number) => void;
+  /** Whether a folder's window shows its path bar (View > Show Path Bar), in every place. */
+  isPathBarShown: boolean;
+  setPathBarShown: (isShown: boolean) => void;
+  /** A folder held under a drag opens (spring-loading): the window goes there, for the drag. */
+  springOpen: (location: Location) => void;
   /** The save panel's name, from the asking application's suggestion until the person types. */
   saveName: string;
   setSaveName: (name: string) => void;
@@ -99,6 +108,9 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
   const [isSettingsOpen, setSettingsOpen] = useState(false);
   const [isPreviewShown, setPreviewShown] = useState(false);
   const [previewWidth, setPreviewWidth] = useState(PREVIEW_WIDTH);
+  // Finder's windows show their path bar once the person has asked for it; Dropsea's from the start.
+  const [isPathBarShown, setPathBarShown] = useState(true);
+  const [springBack] = useState(() => new SpringBack<Location>());
   const suggestedName = usePlatformFiles()?.chooser?.request.suggestedName ?? '';
   const [saveName, setSaveName] = useState(suggestedName);
 
@@ -113,14 +125,24 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
   // as the window stays there, so what shows it draws again only when it moves.
   const location = routed ? current : null;
 
+  const navigate = (next: Location) => {
+    if (location && sameLocation(location, next)) return;
+    router.push(hrefFor(next));
+  };
+  // A drag that sprang folders open and then exits the window without a drop in it (it left, was
+  // dropped elsewhere, or Escape cancelled it) takes the window back to where it was.
+  useWindowDrag({
+    onExit: (isDropped) => {
+      const back = springBack.exited(isDropped);
+      if (back) navigate(back);
+    },
+  });
+
   const value: BrowserValue = {
     location,
     cameFrom,
     history,
-    navigate: (next) => {
-      if (location && sameLocation(location, next)) return;
-      router.push(hrefFor(next));
-    },
+    navigate,
     goBack: () => {
       if (history && canGoBack(history)) router.back();
     },
@@ -152,6 +174,12 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     setPreviewShown,
     previewWidth,
     setPreviewWidth,
+    isPathBarShown,
+    setPathBarShown,
+    springOpen: (next) => {
+      if (location) springBack.opened(location);
+      navigate(next);
+    },
     saveName,
     setSaveName,
   };

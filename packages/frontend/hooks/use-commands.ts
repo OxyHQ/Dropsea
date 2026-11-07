@@ -1,13 +1,13 @@
 import type { Album } from '@dropsea/shared-types';
-import { toast } from '@oxy.so/bloom/toast';
 import { useAlbumActions } from '@/hooks/use-album-actions';
 import { useFileActions } from '@/hooks/use-file-actions';
+import { useFileDrops } from '@/hooks/use-file-drops';
 import { useLocale } from '@/hooks/use-locale';
 import { canTag, type TagChange, useTagActions } from '@/hooks/use-tag-actions';
 import { useTransfers } from '@/hooks/use-transfers';
 import { useViewer } from '@/hooks/use-viewer';
 import type { Selection } from '@/lib/selection';
-import { dropAction, dropFolderFor, filesDrop } from '@/lib/drop';
+import { dropAction, dropFolderFor } from '@/lib/drop';
 import {
   type AlbumPhoto,
   type Item,
@@ -18,10 +18,10 @@ import {
   type TrashItem,
 } from '@/lib/items';
 import { hasLocalFiles } from '@/lib/local-files';
-import { isSameUri, type LocalPlace, uriName } from '@/lib/local-places';
+import { folderName, isSameUri, type LocalPlace, uriName } from '@/lib/local-places';
 import { downloadableOf } from '@/lib/transfers';
-import { useHistory } from '@/lib/undo';
 import { favouriteTags, type ItemTag, tagState, toggledTag } from '@/lib/tags';
+import { type Change, useHistory } from '@/lib/undo';
 
 /** Something the person can do now, from a menu, a key or a screen reader. */
 export interface Command {
@@ -82,12 +82,12 @@ function defaultDownloadPlace(places: readonly LocalPlace[]): LocalPlace | null 
   );
 }
 
-/** A move's name in the Edit menu: its one item's, or how many it moved. */
-function moveName(
-  moves: readonly { to: string }[],
-  name: (count: number, item: string) => string,
+/** A change's name in the Edit menu: a move's or a copy's, of its one item or of how many. */
+function changeName(
+  change: Change,
+  names: Record<Change['relocation'], (count: number, item: string) => string>,
 ): string {
-  return name(moves.length, uriName(moves[0]?.to ?? ''));
+  return names[change.relocation](change.items.length, uriName(change.items[0]?.to ?? ''));
 }
 
 function command(isEnabled: boolean, run: () => void): Command {
@@ -131,6 +131,7 @@ export function useCommands(context: CommandContext) {
     getInfo,
   } = context;
   const fileActions = useFileActions();
+  const fileDrops = useFileDrops(places);
   const transfers = useTransfers();
   const albumActions = useAlbumActions();
   const { isSignedIn, signIn } = useViewer();
@@ -253,11 +254,15 @@ export function useCommands(context: CommandContext) {
     deleteAlbum: command(shownAlbum !== null, () => {
       if (shownAlbum) confirm({ kind: 'delete-album', album: shownAlbum });
     }),
-    /** Edit › Undo and Redo: the latest move taken back, or made again, as Finder's. */
-    undo: command(history.undo !== null, () => runAsync('undo a move', () => fileActions.undo())),
-    undoName: history.undo ? moveName(history.undo, strings.menus.undoMove) : strings.menus.undo,
-    redo: command(history.redo !== null, () => runAsync('redo a move', () => fileActions.redo())),
-    redoName: history.redo ? moveName(history.redo, strings.menus.redoMove) : strings.menus.redo,
+    /** Edit › Undo and Redo: the latest move or copy taken back, or made again, as Finder's. */
+    undo: command(history.undo !== null, () => runAsync('undo a change', () => fileActions.undo())),
+    undoName: history.undo
+      ? changeName(history.undo, { move: strings.menus.undoMove, copy: strings.menus.undoCopy })
+      : strings.menus.undo,
+    redo: command(history.redo !== null, () => runAsync('redo a change', () => fileActions.redo())),
+    redoName: history.redo
+      ? changeName(history.redo, { move: strings.menus.redoMove, copy: strings.menus.redoCopy })
+      : strings.menus.redo,
     selectAll: command(shown.length > 0, selectAll),
     signIn: command(!isSignedIn, signIn),
 
@@ -298,7 +303,12 @@ export function useCommands(context: CommandContext) {
     },
     drop: (dragged: readonly Item[], target: Item) => {
       if (target.source === 'local' && target.isFolder) {
-        runAsync('move items', () => fileActions.moveInto(dragged.filter(isLocal), target.uri));
+        runAsync('move items', () =>
+          fileActions.moveInto(dragged.filter(isLocal), {
+            uri: target.uri,
+            name: folderName(target.uri, places),
+          }),
+        );
       } else if (target.source === 'album') {
         const targetAlbum = albums.find((each) => each.id === target.albumId);
         if (targetAlbum)
@@ -308,22 +318,10 @@ export function useCommands(context: CommandContext) {
 
     /**
      * Files dropped on the items from any application, Dropsea among them (`DropZone`): into the
-     * folder dropped on, else into the folder shown; nowhere else takes them. Never into one of
-     * them or inside one: dropped there, they stay where they are. A move holding one of the
-     * platform's places moves nothing, and says why.
+     * folder dropped on, else into the folder shown; nowhere else takes them (`useFileDrops`).
      */
     dropFolderFor: (target: Item | null): string | null => dropFolderFor(location, target),
-    dropFiles: (uris: readonly string[], folderUri: string, action: 'copy' | 'move') => {
-      const drop = filesDrop(uris, folderUri, action, places);
-      if (drop.kind === 'into-itself') return;
-      if (drop.kind === 'place') {
-        toast.error(strings.placeStays(drop.place.name));
-        return;
-      }
-      runAsync(action === 'copy' ? 'copy items' : 'move items', () =>
-        fileActions.dropInto(uris, folderUri, action),
-      );
-    },
+    dropFiles: fileDrops.dropFiles,
 
     /** Confirmed requests. */
     confirmed: (request: ConfirmRequest) => {

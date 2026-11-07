@@ -15,19 +15,18 @@ import {
   type ChangeProblem,
   createFolder,
   deleteItems,
-  type LocalOutcome,
-  copyItems,
   itemsAtUris,
-  type Moved,
-  moveItems,
-  movesDone,
+  type LocalOutcome,
+  type Relocated,
+  type Relocation,
   renameItem,
 } from '@/lib/local-files';
 import { isSameUri, parentUri } from '@/lib/local-places';
 import { freeName } from '@/lib/names';
 import { forgetFileTags } from '@/lib/dropsea-api';
+import { transferFiles } from '@/lib/operations';
 import { oxyServices } from '@/lib/oxy';
-import { type Replayed, recordMove, redoMove, undoMove } from '@/lib/undo';
+import { type Replayed, recordChange, redoChange, undoChange } from '@/lib/undo';
 
 /** Assets Oxy Files' trash is emptied in, a page at a time. */
 const EMPTY_PAGE_SIZE = 100;
@@ -61,6 +60,8 @@ export function useFileActions() {
   const { strings } = useLocale();
   const { userId } = useViewer();
 
+  /** The platform's Trash, for what a Replace replaces and an Undo Copy's copies. */
+  const trash = files ? (uris: readonly string[]) => files.trash(uris) : null;
   const refreshCloud = () => queryClient.invalidateQueries({ queryKey: cloudFilesKey(userId) });
   const refreshPlatformTrash = () =>
     queryClient.invalidateQueries({ queryKey: PLATFORM_TRASH_KEY });
@@ -73,18 +74,43 @@ export function useFileActions() {
     const failed = outcomes.find((outcome) => !outcome.ok);
     if (failed && !failed.ok) toast.error(strings.fileProblems[failed.error]);
   };
-  /** Shows moves done where the items were and where they went. */
-  const refreshMoved = (moves: readonly Moved[]) => {
-    for (const { from, to } of moves) {
+  /** Shows moves and copies done where the items were and where they went. */
+  const refreshRelocated = (relocated: readonly Relocated[]) => {
+    for (const { from, to } of relocated) {
       refreshFolder(parentUri(from));
       refreshFolder(parentUri(to));
     }
   };
-  /** Shows what an Undo or a Redo moved, and says what it could not. */
-  const showReplayed = (done: Replayed | null) => {
+  /** Shows what an Undo or a Redo moved, copied or put in the Trash, and says what it could not. */
+  const showReplayed = async (done: Replayed | null) => {
     if (!done) return;
-    refreshMoved(done.moved);
+    refreshRelocated(done.relocated);
+    for (const uri of done.trashed) refreshFolder(parentUri(uri));
     reportLocal(done.outcomes);
+    if (done.trashed.length > 0) await refreshPlatformTrash();
+  };
+  /**
+   * Moves or copies items into a folder as Finder does (`lib/operations`): the clashes asked
+   * about, the progress shown, and what was done undoable, shown where the items were and went.
+   */
+  const transfer = async (
+    items: readonly LocalItem[],
+    folder: { uri: string; name: string },
+    relocation: Relocation,
+  ) => {
+    const result = await transferFiles({
+      items,
+      folderUri: folder.uri,
+      folderName: folder.name,
+      relocation,
+      trash,
+    });
+    refreshFolder(folder.uri);
+    if (!result) return;
+    if (relocation === 'move') for (const item of items) refreshFolder(parentUri(item.uri));
+    recordChange(relocation, result.relocated);
+    reportLocal(result.outcomes);
+    if (result.replaced.length > 0) await refreshPlatformTrash();
   };
   /** Runs a change on each cloud item, saying which failed. */
   /**
@@ -119,6 +145,34 @@ export function useFileActions() {
     return results.some((result) => result.status === 'fulfilled');
   };
 
+  /**
+   * This device's items into the platform's Trash, Oxy Files' into its own; the platform's
+   * move-to-trash sound once, as soon as any went, as Finder sounds a Move to Trash.
+   */
+  const moveToTrash = async (items: readonly Item[]): Promise<void> => {
+    const local = items.filter(isLocal);
+    const cloud = items.filter(isCloud);
+    let hasSounded = false;
+    if (local.length > 0 && files) {
+      const outcomes = await files.trash(local.map((item) => item.uri));
+      if (outcomes.some((outcome) => outcome.ok)) {
+        sounds?.play('move-to-trash');
+        hasSounded = true;
+      }
+      reportPlatform(outcomes);
+      for (const item of local) refreshFolder(parentUri(item.uri));
+      await refreshPlatformTrash();
+    }
+    if (cloud.length > 0) {
+      const hasTrashed = await eachCloud(
+        cloud,
+        (assetId) => oxyServices.assets.trash(assetId),
+        'move a file to the trash',
+      );
+      if (hasTrashed && !hasSounded) sounds?.play('move-to-trash');
+    }
+  };
+
   return {
     /** Whether the platform has a Trash for this device's files; without one, deleting is for good. */
     hasPlatformTrash: files !== null,
@@ -144,75 +198,44 @@ export function useFileActions() {
       return change.ok ? { item: change.item } : { why: change.why };
     },
 
-    async moveInto(items: readonly LocalItem[], folderUri: string): Promise<void> {
-      const outcomes = await moveItems(items, folderUri);
-      for (const item of items) refreshFolder(parentUri(item.uri));
-      refreshFolder(folderUri);
-      recordMove(movesDone(items, outcomes));
-      reportLocal(outcomes);
+    /** Dropsea's own items dragged onto a folder of the window, where there is no platform drag. */
+    async moveInto(items: readonly LocalItem[], folder: { uri: string; name: string }) {
+      await transfer(items, folder, 'move');
     },
 
     /**
-     * Files dropped on a folder (OxyOS ADR 0035): moved, or copied when the drop's action is
-     * a copy (Option held), as Finder does; the items the URIs name now, refreshed where they were
-     * and where they go. Its own items dropped on the folder they are in already stay.
+     * Files dropped on a folder (OxyOS ADR 0035, ADR 0047): moved or copied as the drop's action
+     * says, as Finder does; the items the URIs name now. Its own items dropped on the folder they
+     * are in already stay.
      */
     async dropInto(
       uris: readonly string[],
-      folderUri: string,
-      action: 'copy' | 'move',
+      folder: { uri: string; name: string },
+      relocation: Relocation,
     ): Promise<void> {
       const items = itemsAtUris(uris).filter(
-        (item) => action === 'copy' || !isSameUri(parentUri(item.uri), folderUri),
+        (item) => relocation === 'copy' || !isSameUri(parentUri(item.uri), folder.uri),
       );
       if (items.length === 0) return;
-      const outcomes =
-        action === 'copy' ? await copyItems(items, folderUri) : await moveItems(items, folderUri);
-      if (action === 'move') {
-        for (const item of items) refreshFolder(parentUri(item.uri));
-        recordMove(movesDone(items, outcomes));
-      }
-      refreshFolder(folderUri);
-      reportLocal(outcomes);
+      await transfer(items, folder, relocation);
     },
 
-    /** Edit › Undo: the latest move taken back, each item into the folder it came from. */
+    /** Edit › Undo: the latest move taken back, or the latest copy's copies put in the Trash. */
     async undo(): Promise<void> {
-      showReplayed(await undoMove());
+      await showReplayed(await undoChange(trash));
     },
 
-    /** Edit › Redo: the latest move undone made again. */
+    /** Edit › Redo: the latest move or copy undone made again. */
     async redo(): Promise<void> {
-      showReplayed(await redoMove());
+      await showReplayed(await redoChange());
     },
 
-    /**
-     * This device's items into the platform's Trash, Oxy Files' into its own; the platform's
-     * move-to-trash sound once, as soon as any went, as Finder sounds a Move to Trash.
-     */
-    async moveToTrash(items: readonly Item[]): Promise<void> {
-      const local = items.filter(isLocal);
-      const cloud = items.filter(isCloud);
-      let hasSounded = false;
-      if (local.length > 0 && files) {
-        const outcomes = await files.trash(local.map((item) => item.uri));
-        if (outcomes.some((outcome) => outcome.ok)) {
-          sounds?.play('move-to-trash');
-          hasSounded = true;
-        }
-        reportPlatform(outcomes);
-        for (const item of local) refreshFolder(parentUri(item.uri));
-        await refreshPlatformTrash();
-      }
-      if (cloud.length > 0) {
-        const hasTrashed = await eachCloud(
-          cloud,
-          (assetId) => oxyServices.assets.trash(assetId),
-          'move a file to the trash',
-        );
-        if (hasTrashed && !hasSounded) sounds?.play('move-to-trash');
-      }
+    /** Files dropped on the sidebar's Trash: the items the URIs name now, as Move to Trash. */
+    async trashDropped(uris: readonly string[]): Promise<void> {
+      await moveToTrash(itemsAtUris(uris));
     },
+
+    moveToTrash,
 
     /** Deletes this device's items for good, where the platform has no Trash (the person confirmed). */
     deleteForGood(items: readonly LocalItem[]): void {

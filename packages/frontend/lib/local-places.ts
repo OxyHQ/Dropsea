@@ -69,27 +69,33 @@ export function placeOf(uri: string, places: readonly LocalPlace[]): LocalPlace 
   return found;
 }
 
+/** A folder's name as the window shows it: a place's own (in the person's language), else its name. */
+export function folderName(uri: string, places: readonly LocalPlace[]): string {
+  return places.find((place) => isSameUri(place.uri, uri))?.name ?? uriName(uri);
+}
+
 /** A URI without its trailing slash (but the file system's root's), as written otherwise. */
 function trimSlash(uri: string): string {
   return uri.length > 'file:///'.length ? uri.replace(/\/+$/, '') : uri;
 }
 
 /**
- * The folders from the root of the place a URI is in down to it, each with the
- * name a path bar shows: the root's own (the home's, a volume's label), the
- * rest by their names. Its root is a home, a volume or the device's folder:
- * a standard folder is a way into the home, not a root of its own. Each URI
- * keeps the escapes the item's own URI was written with.
+ * The folders from the root of the place a URI is in down to it, as Finder's path bar shows them,
+ * each with the name it shows: the root's own (the home's, a volume's label), a standard folder's
+ * in the person's language, the rest by their names. Its root is a home, a volume or the device's folder: a standard folder is a way into the
+ * home, not a root of its own. A folder outside every place goes down from the computer's root
+ * (`file:///`), named `rootName`. Each URI keeps the escapes the item's own URI was written with.
  */
 export function pathParts(
   uri: string,
   places: readonly LocalPlace[],
+  rootName: string,
 ): { name: string; uri: string }[] {
   const roots = places.filter(
     (place) => place.kind === 'home' || place.kind === 'volume' || place.kind === 'device',
   );
-  const root = placeOf(uri, roots) ?? placeOf(uri, places);
-  if (!root) return [];
+  const root: { name: string; uri: string } = placeOf(uri, roots) ??
+    placeOf(uri, places) ?? { name: rootName, uri: 'file:///' };
   const written = trimSlash(uri);
   const writtenRoot = trimSlash(root.uri);
   const isWrittenAlike = written.startsWith(writtenRoot);
@@ -98,8 +104,8 @@ export function pathParts(
   const parts = [{ name: root.name, uri: base }];
   let at = base;
   for (const segment of rest.split('/').filter(Boolean)) {
-    at = `${at}/${segment}`;
-    parts.push({ name: uriName(at), uri: at });
+    at = at.endsWith('/') ? `${at}${segment}` : `${at}/${segment}`;
+    parts.push({ name: folderName(at, places), uri: at });
   }
   return parts;
 }
