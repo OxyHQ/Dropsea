@@ -15,7 +15,7 @@ import {
   RiPriceTag3Line,
   RiSmartphoneLine,
 } from '@oxy.so/bloom/icons';
-import { usePlatformFiles } from '@oxy.so/bloom/platform-surface';
+import { type DropTargetDropEvent, usePlatformFiles } from '@oxy.so/bloom/platform-surface';
 import type { SidebarIcon, SidebarTree } from '@oxy.so/bloom/sidebar';
 import { View } from 'react-native';
 import { TagMark } from '@/components/TagMark';
@@ -25,7 +25,10 @@ import { useTagDefinitions } from '@/hooks/use-tag-definitions';
 import { useViewer } from '@/hooks/use-viewer';
 import { type Location, locationKey } from '@/lib/items';
 import type { LocalPlace } from '@/lib/local-places';
-import { favouriteTags } from '@/lib/tags';
+import { favouriteTags, type TagDefinition } from '@/lib/tags';
+
+const TAG_DROP_ACCEPT = ['files'] as const;
+const TAG_DROP_ACTIONS = ['copy'] as const;
 
 const PLACE_ICONS: Record<LocalPlace['kind'], SidebarIcon> = {
   home: RiHomeLine,
@@ -52,6 +55,8 @@ export function useSidebarTree(
   places: readonly LocalPlace[],
   onNewAlbum: () => void,
   onAllTags: () => void,
+  /** Files dropped on a sidebar tag: they take it. Null where nothing takes drops. */
+  onTagDrop: ((uris: readonly string[], tag: TagDefinition) => void) | null,
 ): { tree: SidebarTree[]; locations: ReadonlyMap<string, Location> } {
   const { strings } = useLocale();
   const { isSignedIn } = useViewer();

@@ -23,6 +23,8 @@ import { SettingsDialog } from '@/components/SettingsDialog';
 import { useBrowser } from '@/components/BrowserProvider';
 import { useAlbumActions } from '@/hooks/use-album-actions';
 import { useLocalTagsFollowed } from '@/hooks/use-item-tags';
+import { useTagActions } from '@/hooks/use-tag-actions';
+import { itemsAtUris } from '@/lib/local-files';
 import { useLocale } from '@/hooks/use-locale';
 import { useLocalPlaces } from '@/hooks/use-local-places';
 import { useSidebarTree } from '@/hooks/use-sidebar-tree';
@@ -46,16 +48,26 @@ export function BrowserShell() {
     useBrowser();
   const { strings } = useLocale();
   const { places } = useLocalPlaces();
+  const isChooser = usePlatformFiles()?.chooser !== undefined;
+  const tagActions = useTagActions();
   const { tree, locations } = useSidebarTree(
     places,
     () => setNewAlbumOpen(true),
     () => setSettingsOpen(true),
+    isChooser
+      ? null
+      : (uris, tag) => {
+          tagActions
+            .change(itemsAtUris(uris), { add: [{ name: tag.name, color: tag.color }] })
+            .catch((error: unknown) =>
+              console.warn('Dropsea could not tag files dropped on a tag', { uris, error }),
+            );
+        },
   );
   const { isSignedIn } = useViewer();
   const albumActions = useAlbumActions();
   useLocalTagsFollowed();
   const pathname = usePathname();
-  const isChooser = usePlatformFiles()?.chooser !== undefined;
   useWindowSizeLimits(isChooser ? CHOOSER_MIN : WINDOW_MIN);
   return (
     <>
