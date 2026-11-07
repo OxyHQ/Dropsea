@@ -1,5 +1,6 @@
 import '../global.css';
 
+import { OverlayInertBoundary, PortalOutlet, PortalProvider } from '@oxy.so/bloom/portal';
 import { BloomProvider } from '@oxy.so/bloom/provider';
 import { OxyProvider } from '@oxy.so/services/ui/client';
 import { Slot } from 'expo-router';
@@ -37,7 +38,15 @@ export default function RootLayout() {
                 }),
             }}
           >
-            <Slot />
+            {/* Bloom's portaled surfaces on native (Settings' modal among them) paint in the
+                outlet, after the content they cover; the boundary hides that content from a
+                screen reader while a modal one is open (Bloom's docs/portal.mdx). */}
+            <PortalProvider>
+              <OverlayInertBoundary>
+                <Slot />
+              </OverlayInertBoundary>
+              <PortalOutlet />
+            </PortalProvider>
           </OxyProvider>
         </BloomProvider>
       </SafeAreaProvider>
