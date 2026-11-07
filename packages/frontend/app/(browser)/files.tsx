@@ -8,14 +8,14 @@ import { hasLocalFiles } from '@/lib/local-files';
 import { isSameUri, parentUri, placeOf, uriName } from '@/lib/local-places';
 import { hrefFor } from '@/lib/routes';
 
-/** A folder on this device, by its URI. */
+/** A folder on this device, by its URI, and the item in it a reveal selects. */
 export default function FolderScreen() {
-  const { uri } = useLocalSearchParams<{ uri: string }>();
+  const { uri, select } = useLocalSearchParams<{ uri: string; select?: string }>();
   if (!hasLocalFiles() || !uri?.startsWith('file://')) return <Redirect href="/" />;
-  return <Folder uri={uri} />;
+  return <Folder uri={uri} select={select?.startsWith('file://') ? select : null} />;
 }
 
-function Folder({ uri }: { uri: string }) {
+function Folder({ uri, select }: { uri: string; select: string | null }) {
   const { strings } = useLocale();
   const { places } = useLocalPlaces();
   const state = useLocalFolder(uri);
@@ -29,12 +29,13 @@ function Folder({ uri }: { uri: string }) {
     );
   }
   // Each folder is its own pane, as Finder's: what was selected, searched or
-  // scrolled to in one does not carry into the next.
+  // scrolled to in one does not carry into the next. A reveal of an item in the
+  // folder shown arrives as a pane of its own too, with that item selected.
   return (
     <Browser
-      key={uri}
+      key={`${uri}\n${select ?? ''}`}
       listing={{
-        location: { kind: 'folder', uri },
+        location: select ? { kind: 'folder', uri, select } : { kind: 'folder', uri },
         title: place?.name ?? uriName(uri),
         items: state.status === 'ready' ? state.items : [],
         status: state.status === 'ready' ? 'ready' : 'error',

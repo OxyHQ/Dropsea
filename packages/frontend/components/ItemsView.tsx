@@ -188,7 +188,8 @@ export interface ItemsViewProps {
   order: SortOrder;
   onSort: (column: SortColumn) => void;
   dateColumn: 'date' | 'deleted' | 'taken';
-  hasOriginColumn: boolean;
+  /** The column of where each item is, by its title: where it was (the Trash's), or where it is (a search's); null for none. */
+  originColumn: 'origin' | 'location' | null;
   originOf: (item: Item) => string;
   onOpen: (item: Item) => void;
   /** Whether dragged items may be dropped on an item (a folder, an album). */
@@ -237,7 +238,7 @@ export function ItemsView({
   order,
   onSort,
   dateColumn,
-  hasOriginColumn,
+  originColumn,
   originOf,
   onOpen,
   canDrop,
@@ -755,8 +756,8 @@ export function ItemsView({
           isDropTarget={isDropTarget}
           rename={itemRename}
           columns={columnsShown}
-          hasOriginColumn={hasOriginColumn}
-          origin={hasOriginColumn ? originOf(item) : ''}
+          hasOriginColumn={originColumn !== null}
+          origin={originColumn !== null ? originOf(item) : ''}
           thumbnailUrl={thumbnailUrl}
           tags={tagsOf(item)}
           tagStyle={tagStyle}
@@ -896,7 +897,7 @@ export function ItemsView({
               onSort={onSort}
               columns={columnsShown}
               dateColumn={dateColumn}
-              hasOriginColumn={hasOriginColumn}
+              originColumn={originColumn}
             />
           ) : null}
           <DropZone

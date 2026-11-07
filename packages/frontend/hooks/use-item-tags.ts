@@ -139,17 +139,23 @@ export function useItemTags(items: readonly Item[], folderUri: string | null): T
  * offers besides the person's own tags.
  */
 export function useFoundTagNames(isEnabled: boolean): string[] {
-  const tags = usePlatformFiles()?.tags;
   const { userId, isSignedIn } = useViewer();
-  const local = useQuery({
-    queryKey: [...LOCAL_TAGS_KEY, 'names'],
-    queryFn: async () => (tags ? (await tags.names()).map((found) => found.name) : []),
-    enabled: isEnabled && tags !== undefined,
-  });
+  const local = useLocalTagNames(isEnabled);
   const cloud = useQuery({
     queryKey: [...cloudTagsKey(userId), 'names'],
     queryFn: async () => (await listFileTagNames()).map((found) => found.name),
     enabled: isEnabled && isSignedIn,
   });
-  return [...(local.data ?? []), ...(cloud.data ?? [])];
+  return [...local, ...(cloud.data ?? [])];
+}
+
+/** Every tag name the platform's index found on this device's files: what a search of them offers. */
+export function useLocalTagNames(isEnabled: boolean): string[] {
+  const tags = usePlatformFiles()?.tags;
+  const local = useQuery({
+    queryKey: [...LOCAL_TAGS_KEY, 'names'],
+    queryFn: async () => (tags ? (await tags.names()).map((found) => found.name) : []),
+    enabled: isEnabled && tags !== undefined,
+  });
+  return local.data ?? [];
 }

@@ -1,8 +1,10 @@
 /**
  * Where each location lives in Dropsea's routes, both ways, so a link opens the
  * place it names and every place has a link: `/files?uri=…` (a folder on this
- * device, by its URI), `/cloud`, `/photos`, `/albums`, `/albums/[id]`,
- * `/trash` and `/tags/[name]` (every item with a tag).
+ * device, by its URI, and `&select=…` an item in it to select, as a reveal:
+ * `dropsea://files?uri=…&select=…` is how OxyOS's Spotlight shows a file in
+ * Dropsea), `/cloud`, `/photos`, `/albums`, `/albums/[id]`, `/trash` and
+ * `/tags/[name]` (every item with a tag).
  */
 import type { Href } from 'expo-router';
 import type { Location } from '@/lib/items';
@@ -10,7 +12,12 @@ import type { Location } from '@/lib/items';
 export function hrefFor(location: Location): Href {
   switch (location.kind) {
     case 'folder':
-      return { pathname: '/files', params: { uri: location.uri } };
+      return {
+        pathname: '/files',
+        params: location.select
+          ? { uri: location.uri, select: location.select }
+          : { uri: location.uri },
+      };
     case 'cloud':
       return '/cloud';
     case 'photos':
@@ -41,7 +48,11 @@ export function locationFromRoute(
   switch (section) {
     case 'files': {
       const uri = firstParam(params.uri);
-      return uri?.startsWith('file://') ? { kind: 'folder', uri } : null;
+      if (!uri?.startsWith('file://')) return null;
+      const select = firstParam(params.select);
+      return select?.startsWith('file://')
+        ? { kind: 'folder', uri, select }
+        : { kind: 'folder', uri };
     }
     case 'cloud':
       return { kind: 'cloud' };

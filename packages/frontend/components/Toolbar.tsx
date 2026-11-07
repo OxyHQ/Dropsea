@@ -20,10 +20,11 @@ import {
   RiUploadCloud2Line,
 } from '@oxy.so/bloom/icons';
 import { PageHeader } from '@oxy.so/bloom/page-header';
-import { Search } from '@oxy.so/bloom/search';
+import type { PlatformSearchToken } from '@oxy.so/bloom/platform-surface';
 import { useState } from 'react';
 import { View } from 'react-native';
 import type { ViewMode } from '@/components/BrowserProvider';
+import { SearchField } from '@/components/SearchField';
 import { useLocale } from '@/hooks/use-locale';
 
 export function Toolbar({
@@ -33,6 +34,8 @@ export function Toolbar({
   onViewMode,
   search,
   onSearch,
+  searchTokens,
+  onSearchTokens,
   canGoBack,
   canGoForward,
   onBack,
@@ -49,6 +52,9 @@ export function Toolbar({
   onViewMode: (mode: ViewMode) => void;
   search: string;
   onSearch: (text: string) => void;
+  /** The search's filters as tokens, where the platform searches for Dropsea; null where it filters words alone. */
+  searchTokens: readonly PlatformSearchToken[] | null;
+  onSearchTokens: (tokens: readonly PlatformSearchToken[]) => void;
   canGoBack: boolean;
   canGoForward: boolean;
   onBack: () => void;
@@ -157,7 +163,7 @@ export function Toolbar({
               testID="preview-toggle"
             />
           </ButtonGroup>
-          {compact && !isSearchOpen && search === '' ? (
+          {compact && !isSearchOpen && search === '' && (searchTokens ?? []).length === 0 ? (
             <ButtonGroup accessibilityLabel={strings.search}>
               <ButtonGroupItem
                 iconOnly
@@ -168,17 +174,20 @@ export function Toolbar({
               />
             </ButtonGroup>
           ) : (
-            <View className={compact ? 'w-40' : 'w-52'}>
-              <Search
-                size="sm"
+            // The field widens while it holds tokens, so the words keep their room beside them.
+            <View
+              className={
+                compact ? 'w-40' : searchTokens && searchTokens.length > 0 ? 'w-72' : 'w-52'
+              }
+            >
+              <SearchField
                 value={search}
-                onChangeText={onSearch}
-                onClearText={() => onSearch('')}
+                onValueChange={onSearch}
+                tokens={searchTokens}
+                onTokensChange={onSearchTokens}
                 onBlur={() => setSearchOpen(false)}
-                autoFocus={compact && isSearchOpen}
+                isAutoFocused={compact && isSearchOpen}
                 placeholder={compact ? strings.search : strings.searchIn(placeName)}
-                accessibilityLabel={strings.search}
-                testID="search"
               />
             </View>
           )}

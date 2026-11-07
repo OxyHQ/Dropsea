@@ -68,10 +68,19 @@ export function replaceCurrent(history: History, location: Location): History {
 /**
  * What is selected as the window arrives somewhere: the folder it just left,
  * when that is one of the items here (going up, or back out of it), as Finder
- * selects it, so the keys go on from where the person was.
+ * selects it, so the keys go on from where the person was; else the item the
+ * link that brought it asked for (`select`, a reveal), when it is here.
  */
-export function selectionOnArrival(items: readonly Item[], cameFrom: Location | null): Selection {
-  if (cameFrom?.kind !== 'folder') return NO_SELECTION;
-  const left = items.find((item) => item.source === 'local' && isSameUri(item.uri, cameFrom.uri));
-  return left ? selectOnly(left.key) : NO_SELECTION;
+export function selectionOnArrival(
+  items: readonly Item[],
+  cameFrom: Location | null,
+  select: string | null = null,
+): Selection {
+  const wanted = [cameFrom?.kind === 'folder' ? cameFrom.uri : null, select];
+  for (const uri of wanted) {
+    if (uri === null) continue;
+    const found = items.find((item) => item.source === 'local' && isSameUri(item.uri, uri));
+    if (found) return selectOnly(found.key);
+  }
+  return NO_SELECTION;
 }

@@ -15,7 +15,12 @@ import { type AppShellPanelDefinition, AppShellPanels } from '@oxy.so/bloom/app-
 import { EmptyState } from '@oxy.so/bloom/empty-state';
 import type { BloomIconComponent } from '@oxy.so/bloom/icons';
 import { Loading } from '@oxy.so/bloom/loading';
-import { usePlatformFiles, usePlatformMenuBar } from '@oxy.so/bloom/platform-surface';
+import {
+  type PlatformSearchToken,
+  usePlatformFiles,
+  usePlatformMenuBar,
+  usePlatformSearch,
+} from '@oxy.so/bloom/platform-surface';
 import { Screen } from '@oxy.so/bloom/screen';
 import { Text } from '@oxy.so/bloom/typography';
 import { useWindowWidthClass } from '@oxy.so/bloom/hooks';
@@ -32,6 +37,7 @@ import { InfoDialog } from '@/components/InfoDialog';
 import { ItemsView } from '@/components/ItemsView';
 import { PreviewDialog } from '@/components/PreviewDialog';
 import { PreviewPane } from '@/components/PreviewPane';
+import { SearchScopeBar } from '@/components/SearchScopeBar';
 import { SignInPanel } from '@/components/SignInPanel';
 import { StatusBar } from '@/components/StatusBar';
 import { TagsDialog } from '@/components/TagsDialog';
@@ -45,6 +51,7 @@ import { useTagDefinitions } from '@/hooks/use-tag-definitions';
 import { type ConfirmRequest, useCommands } from '@/hooks/use-commands';
 import { useLocale } from '@/hooks/use-locale';
 import { useLocalPlaces } from '@/hooks/use-local-places';
+import { useSearchResults } from '@/hooks/use-search-results';
 import {
   activateStep,
   type ChooserStep,
@@ -60,6 +67,7 @@ import { type Item, itemKind, type LocalItem, type Location } from '@/lib/items'
 import type { ItemsLayout } from '@/lib/items-layout';
 import { isSameUri, parentUri, pathParts, uriName } from '@/lib/local-places';
 import { useOperations } from '@/lib/operations';
+import { platformSearchQuery, type SearchScope, searchResults, tokenLabel } from '@/lib/search';
 import { isSelected, keepShown, type Selection, selectAll } from '@/lib/selection';
 import { groupItems, sortBy, sortItems, visibleItems } from '@/lib/sorting';
 import { TAG_KEYWORD, tagStyleOf } from '@/lib/tags';
@@ -120,21 +128,29 @@ function InWindowMenus({ children }: { children: ReactNode }) {
 }
 
 export function Browser({ listing }: { listing: Listing }) {
-  const { location, items } = listing;
+  const { location } = listing;
   const browser = useBrowser();
-  const { strings } = useLocale();
+  const { strings, locale } = useLocale();
   const { places } = useLocalPlaces();
   const albums = useAlbums();
   const platformWindow = useWindow();
   const platformMenuBar = usePlatformMenuBar();
   const chooser = usePlatformFiles()?.chooser ?? null;
+  const platformSearch = usePlatformSearch();
   const isWindowActive = platformWindow ? platformWindow.active : true;
   const { progress } = useOperations();
 
   const [rawSelection, setSelection] = useState<Selection>(() =>
-    selectionOnArrival(items, browser.cameFrom),
+    selectionOnArrival(
+      listing.items,
+      browser.cameFrom,
+      location.kind === 'folder' ? (location.select ?? null) : null,
+    ),
   );
   const [search, setSearch] = useState('');
+  // The search's filters, as tokens, and where it looks: where the platform searches its index.
+  const [searchTokens, setSearchTokens] = useState<readonly PlatformSearchToken[]>([]);
+  const [searchScope, setSearchScope] = useState<SearchScope>('computer');
   const [renamingKey, setRenamingKey] = useState<string | null>(null);
   const [previewItem, setPreviewItem] = useState<Item | null>(null);
   const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
@@ -151,15 +167,49 @@ export function Browser({ listing }: { listing: Listing }) {
   // Return does (Finder's rename ends either way), and only once.
   const renaming = useRef<{ key: string; text: string } | null>(null);
 
+  // A folder on this device is searched through the platform's index where it
+  // has one, as Finder's search asks Spotlight's: the results, from anywhere
+  // on the computer or in the folder, are what the pane shows while the field
+  // holds words or tokens. Elsewhere (the web, a phone, Oxy Files) the search
+  // filters the place's own items by name and tag.
+  const folderUri = location.kind === 'folder' ? location.uri : null;
+  const searchQuery =
+    platformSearch !== null && folderUri !== null
+      ? platformSearchQuery({
+          text: search,
+          tokens: searchTokens,
+          scope: searchScope,
+          folderUri,
+          language: locale,
+        })
+      : null;
+  const found = useSearchResults(platformSearch, searchQuery);
+  const isSearching = searchQuery !== null;
+  const results = isSearching && found.data ? searchResults(found.data) : [];
+  const resultOf = new Map(results.map((result) => [result.item.key, result]));
+  const items: readonly Item[] = isSearching ? results.map((result) => result.item) : listing.items;
+  const status: Listing['status'] = isSearching
+    ? found.isError
+      ? 'error'
+      : 'ready'
+    : listing.status;
+  if (found.isError) {
+    console.warn('The platform could not search for Dropsea', {
+      query: searchQuery,
+      error: found.error,
+    });
+  }
+
   const viewMode = browser.viewModeFor(location);
   const order = browser.orderFor(location);
-  const tags = useItemTags(items, location.kind === 'folder' ? location.uri : null);
+  // Results come from many folders: their tags are read item by item.
+  const tags = useItemTags(items, isSearching ? null : folderUri);
   const { definitions } = useTagDefinitions();
   const tagStyle = tagStyleOf(definitions);
   // A search finds `tag:Red` in English and in the person's language's own word.
   const tagKeywords = [...new Set([TAG_KEYWORD, strings.tags.keyword])];
   const sorted = sortItems(
-    visibleItems(items, search, browser.isShowingHidden, tagKeywords, tags),
+    visibleItems(items, isSearching ? '' : search, browser.isShowingHidden, tagKeywords, tags),
     order,
     tags,
   );
@@ -202,6 +252,7 @@ export function Browser({ listing }: { listing: Listing }) {
   }
 
   const originOf = (item: Item): string => {
+    if (isSearching) return resultOf.get(item.key)?.location ?? '';
     if (item.source === 'cloud-trash') return strings.origins.cloud;
     if (item.source !== 'local-trash') return '';
     if (!item.originalUri) return strings.origins.unknown;
@@ -260,7 +311,6 @@ export function Browser({ listing }: { listing: Listing }) {
   const { hasPlatformTrash, uploadPicked, confirmed } = commands;
 
   // The file chooser's answers: what its button, a double click and Return do.
-  const folderUri = location.kind === 'folder' ? location.uri : null;
   const answer = (uris: readonly string[]) => {
     if (!chooser) return;
     answerChosen(chooser, uris, folderUri).catch((error: unknown) =>
@@ -287,7 +337,7 @@ export function Browser({ listing }: { listing: Listing }) {
     const step = saveStep(
       browser.saveName,
       folderUri,
-      items.filter((item): item is LocalItem => item.source === 'local'),
+      listing.items.filter((item): item is LocalItem => item.source === 'local'),
     );
     switch (step.kind) {
       case 'save':
@@ -319,6 +369,9 @@ export function Browser({ listing }: { listing: Listing }) {
   const activate = (item: Item) => {
     if (chooser) runStep(activateStep(chooser.request, item));
     else commands.openItem(item);
+    // A result opened ranks higher in the platform's next answers.
+    const result = resultOf.get(item.key);
+    if (result) platformSearch?.used(result.id);
   };
 
   const startRename = (item: LocalItem) => {
@@ -387,6 +440,12 @@ export function Browser({ listing }: { listing: Listing }) {
   });
 
   const path = location.kind === 'folder' ? pathParts(location.uri, places, strings.computer) : [];
+  // A search's path bar is where the result selected is, as Finder's.
+  const shownPath = isSearching
+    ? previewed?.source === 'local'
+      ? pathParts(parentUri(previewed.uri), places, strings.computer)
+      : []
+    : path;
   const enclosing: Location | null =
     location.kind === 'folder' && path.length > 1
       ? { kind: 'folder', uri: parentUri(location.uri) }
@@ -399,15 +458,31 @@ export function Browser({ listing }: { listing: Listing }) {
       ? strings.selected(selected.length, shown.length)
       : strings.items(shown.length);
 
-  const emptyState =
-    listing.status === 'ready' ? (
+  // What a search asked for, said back when it found nothing: the words, else the tokens.
+  const searchedFor =
+    search.trim() || searchTokens.map((token) => tokenLabel(token, strings.searching)).join(', ');
+  const emptyState = isSearching ? (
+    // Nothing is said before the first answer: the platform answers in milliseconds.
+    found.data ? (
       <EmptyState
         variant="compact"
         icon={listing.empty.icon}
-        title={search ? strings.empty.noResults(search) : listing.empty.title}
-        description={search ? undefined : listing.empty.hint}
+        title={strings.searching.noResults(searchedFor)}
+        testID="search-no-results"
       />
-    ) : null;
+    ) : null
+  ) : status === 'ready' ? (
+    <EmptyState
+      variant="compact"
+      icon={listing.empty.icon}
+      title={search ? strings.empty.noResults(search) : listing.empty.title}
+      description={search ? undefined : listing.empty.hint}
+    />
+  ) : null;
+  const retry = isSearching ? () => found.refetch() : listing.onRetry;
+  // A search's results are in no one folder: a drop goes into a folder among them, never beside them.
+  const searchDropFolderFor = (target: Item | null): string | null =>
+    target?.source === 'local' && target.isFolder ? target.uri : null;
 
   // What assistive technology can do to an item: one list for the items alike,
   // so an item draws again only when its own list changes.
@@ -436,19 +511,19 @@ export function Browser({ listing }: { listing: Listing }) {
           : otherActions;
 
   const body =
-    listing.status === 'signed-out' ? (
+    status === 'signed-out' ? (
       <View className="flex-1 justify-center">
         <SignInPanel />
       </View>
-    ) : listing.status === 'loading' ? (
+    ) : status === 'loading' ? (
       <View className="flex-1 items-center justify-center">
         <Loading />
       </View>
-    ) : listing.status === 'error' ? (
+    ) : status === 'error' ? (
       <View className="flex-1 items-center justify-center">
         <EmptyState
           title={strings.couldNotLoad}
-          action={listing.onRetry ? { label: strings.retry, onPress: listing.onRetry } : undefined}
+          action={retry ? { label: strings.retry, onPress: retry } : undefined}
         />
       </View>
     ) : (
@@ -496,12 +571,16 @@ export function Browser({ listing }: { listing: Listing }) {
                         ? 'taken'
                         : 'date'
                   }
-                  hasOriginColumn={location.kind === 'trash'}
+                  originColumn={
+                    isSearching ? 'location' : location.kind === 'trash' ? 'origin' : null
+                  }
                   originOf={originOf}
                   onOpen={activate}
                   canDrop={chooser ? () => false : commands.canDrop}
                   onDrop={commands.drop}
-                  dropFolderFor={chooser ? undefined : commands.dropFolderFor}
+                  dropFolderFor={
+                    chooser ? undefined : isSearching ? searchDropFolderFor : commands.dropFolderFor
+                  }
                   onDropFiles={chooser ? undefined : commands.dropFiles}
                   onSpringOpen={
                     chooser
@@ -661,6 +740,8 @@ export function Browser({ listing }: { listing: Listing }) {
           onViewMode={(mode) => browser.setViewMode(location, mode)}
           search={search}
           onSearch={setSearch}
+          searchTokens={platformSearch !== null && folderUri !== null ? searchTokens : null}
+          onSearchTokens={setSearchTokens}
           canGoBack={browser.canGoBack}
           canGoForward={browser.canGoForward}
           onBack={browser.goBack}
@@ -678,11 +759,11 @@ export function Browser({ listing }: { listing: Listing }) {
       bottomBar={
         chooser ? (
           <View>
-            {listing.status === 'ready' ? (
+            {status === 'ready' ? (
               // The panel always shows where it is: its title is the asking application's.
               <StatusBar
                 text={statusText}
-                path={path}
+                path={shownPath}
                 onPath={(uri) => browser.navigate({ kind: 'folder', uri })}
                 drops={null}
                 progress={null}
@@ -706,10 +787,10 @@ export function Browser({ listing }: { listing: Listing }) {
               }
             />
           </View>
-        ) : listing.status === 'ready' ? (
+        ) : status === 'ready' ? (
           <StatusBar
             text={statusText}
-            path={browser.isPathBarShown ? path : []}
+            path={browser.isPathBarShown ? shownPath : []}
             onPath={(uri) => browser.navigate({ kind: 'folder', uri })}
             drops={{
               onDropFiles: commands.dropFiles,
@@ -721,6 +802,14 @@ export function Browser({ listing }: { listing: Listing }) {
       }
     >
       {chooser ? null : platformMenuBar ? menus : <InWindowMenus>{menus}</InWindowMenus>}
+      {isSearching ? (
+        <SearchScopeBar
+          scope={searchScope}
+          onScope={setSearchScope}
+          folderName={listing.title}
+          isIndexing={found.data?.indexing === true}
+        />
+      ) : null}
       {body}
       <AlertDialog
         open={confirm !== null}

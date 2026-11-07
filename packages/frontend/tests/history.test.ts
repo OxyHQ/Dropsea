@@ -71,6 +71,18 @@ describe('arriving', () => {
     ).toEqual(['file:///home/ada/Documents']);
   });
 
+  test('selects the item a reveal asks for, unless it came out of a folder here', () => {
+    const notes = 'file:///home/ada/notes.md';
+    expect(selectionOnArrival(items, { kind: 'cloud' }, notes).keys).toEqual([notes]);
+    expect(selectionOnArrival(items, null, 'file:///home/ada/Documents/').keys).toEqual([
+      'file:///home/ada/Documents',
+    ]);
+    expect(selectionOnArrival(items, DOCUMENTS, notes).keys).toEqual([
+      'file:///home/ada/Documents',
+    ]);
+    expect(selectionOnArrival(items, null, 'file:///home/ada/gone.txt')).toEqual(NO_SELECTION);
+  });
+
   test('selects nothing coming from elsewhere, or arriving first', () => {
     expect(selectionOnArrival(items, { kind: 'folder', uri: 'file:///srv' })).toEqual(NO_SELECTION);
     expect(selectionOnArrival(items, { kind: 'cloud' })).toEqual(NO_SELECTION);

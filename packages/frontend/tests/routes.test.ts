@@ -6,6 +6,11 @@ describe('routes', () => {
   test('give every location a link that opens it again', () => {
     const locations: Location[] = [
       { kind: 'folder', uri: 'file:///home/ada/My%20Files/' },
+      {
+        kind: 'folder',
+        uri: 'file:///home/ada/Documents',
+        select: 'file:///home/ada/Documents/Work%20Notes/',
+      },
       { kind: 'cloud' },
       { kind: 'photos' },
       { kind: 'albums' },
@@ -34,6 +39,26 @@ describe('routes', () => {
     expect(locationFromRoute('/files', { uri: ['file:///a', 'file:///b'] })).toEqual({
       kind: 'folder',
       uri: 'file:///a',
+    });
+  });
+
+  test('name the item a reveal selects, as Spotlight links to it, and only a local one', () => {
+    expect(
+      locationFromRoute('/files', {
+        uri: 'file:///home/ada/Documents',
+        select: 'file:///home/ada/Documents/invoice.pdf',
+      }),
+    ).toEqual({
+      kind: 'folder',
+      uri: 'file:///home/ada/Documents',
+      select: 'file:///home/ada/Documents/invoice.pdf',
+    });
+    expect(
+      locationFromRoute('/files', { uri: 'file:///home/ada', select: 'https://example.com/x' }),
+    ).toEqual({ kind: 'folder', uri: 'file:///home/ada' });
+    expect(hrefFor({ kind: 'folder', uri: 'file:///home/ada' })).toEqual({
+      pathname: '/files',
+      params: { uri: 'file:///home/ada' },
     });
   });
 });
