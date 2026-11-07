@@ -25,6 +25,7 @@ import {
 } from '@oxy.so/bloom/icons';
 import { usePlatformFiles } from '@oxy.so/bloom/platform-surface';
 import type { SidebarIcon, SidebarTree, SidebarTreeItemDrop } from '@oxy.so/bloom/sidebar';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { TagMark } from '@/components/TagMark';
 import { useAlbums } from '@/hooks/use-albums';
@@ -96,14 +97,37 @@ export function useSidebarTree(
 ): { tree: SidebarTree[]; locations: ReadonlyMap<string, Location> } {
   const { strings } = useLocale();
   const { isSignedIn } = useViewer();
-  const albums = useAlbums();
+  // The albums' own fields, not the query's result, which is a new object at every render.
+  const { data: albums, isPending: isLoadingAlbums, isError: hasAlbumsError } = useAlbums();
   const { definitions, save: saveDefinitions } = useTagDefinitions();
   const isChooser = usePlatformFiles()?.chooser !== undefined;
-  const locations = new Map<string, Location>();
-  const { spring } = useSpringLoading((key) => {
-    const location = locations.get(key);
-    if (location) drops?.onSpringOpen(location);
+  // What the rows do with a drop, a press of their buttons or their menus, read as they do it: the
+  // tree is made again only when what it shows changes (the places, the albums, the tags, the
+  // language), never as the window goes from place to place, so the sidebar draws again only the
+  // two rows the selection moves between (Bloom's tree rows).
+  const latest = useRef({ places, drops, onNewAlbum, onAllTags, saveDefinitions });
+  useLayoutEffect(() => {
+    latest.current = { places, drops, onNewAlbum, onAllTags, saveDefinitions };
   });
+  const [actions] = useState(() => ({
+    dropFiles: (uris: readonly string[], folderUri: string, action: 'copy' | 'move') =>
+      latest.current.drops?.onDropFiles(uris, folderUri, action),
+    trashFiles: (uris: readonly string[]) => latest.current.drops?.onTrashFiles(uris),
+    tagFiles: (uris: readonly string[], tag: TagDefinition) =>
+      latest.current.drops?.onTagFiles(uris, tag),
+    newAlbum: () => latest.current.onNewAlbum(),
+    allTags: () => latest.current.onAllTags(),
+    saveDefinitions: (next: readonly TagDefinition[]) => latest.current.saveDefinitions(next),
+  }));
+  const takesDrops = drops !== null;
+  // A place held under a drag springs open: the place whose row it is.
+  const { spring } = useSpringLoading((key) => {
+    const place = latest.current.places.find(
+      (each) => locationKey({ kind: 'folder', uri: each.uri }) === key,
+    );
+    if (place) latest.current.drops?.onSpringOpen({ kind: 'folder', uri: place.uri });
+  });
+  const locations = new Map<string, Location>();
   const row = (
     location: Location,
     label: string,
@@ -116,7 +140,7 @@ export function useSidebarTree(
   };
   /** A place's row takes files into its folder, and springs open held under a drag. */
   const placeDrop = (place: LocalPlace): SidebarTreeItemDrop | undefined => {
-    if (!drops) return undefined;
+    if (!takesDrops) return undefined;
     const key = locationKey({ kind: 'folder', uri: place.uri });
     const hover = (event: DropTargetDragEvent) => spring.hover(event.action ? key : null);
     return {
@@ -130,17 +154,17 @@ export function useSidebarTree(
         spring.cancel();
         const uris = droppedUris(event);
         if (uris.length === 0 || event.action === 'link') return;
-        drops.onDropFiles(uris, place.uri, event.action);
+        actions.dropFiles(uris, place.uri, event.action);
       },
     };
   };
-  const trashDrop: SidebarTreeItemDrop | undefined = drops
+  const trashDrop: SidebarTreeItemDrop | undefined = takesDrops
     ? {
         accept: DROP_ACCEPT,
         actions: TRASH_ACTIONS,
         onDrop: (event) => {
           const uris = droppedUris(event);
-          if (uris.length > 0) drops.onTrashFiles(uris);
+          if (uris.length > 0) actions.trashFiles(uris);
         },
       }
     : undefined;
@@ -194,16 +218,16 @@ export function useSidebarTree(
           tone="neutral"
           leadingIcon={RiAddLine}
           accessibilityLabel={strings.menus.newAlbum}
-          onPress={onNewAlbum}
+          onPress={actions.newAlbum}
           testID="new-album"
         />
       ),
-      loading: albums.isPending,
-      error: albums.isError ? strings.couldNotLoad : undefined,
+      loading: isLoadingAlbums,
+      error: hasAlbumsError ? strings.couldNotLoad : undefined,
       emptyLabel: strings.empty.albums,
       items: [
         row({ kind: 'albums' }, strings.albums, RiGalleryLine),
-        ...(albums.data ?? []).map((album) =>
+        ...(albums ?? []).map((album) =>
           row({ kind: 'album', albumId: album.id }, album.name, RiGalleryLine),
         ),
       ],
@@ -249,27 +273,31 @@ export function useSidebarTree(
                 <DropdownMenuContent>
                   <DropdownMenuItem
                     onPress={() => {
-                      saveDefinitions(
-                        updatedDefinition(definitions, tag.name, { isFavourite: false }),
-                      ).catch((error: unknown) =>
-                        console.warn('Dropsea could not take a tag out of the sidebar', error),
-                      );
+                      actions
+                        .saveDefinitions(
+                          updatedDefinition(definitions, tag.name, { isFavourite: false }),
+                        )
+                        .catch((error: unknown) =>
+                          console.warn('Dropsea could not take a tag out of the sidebar', error),
+                        );
                     }}
                   >
                     {strings.tags.removeFromSidebar}
                   </DropdownMenuItem>
-                  <DropdownMenuItem onPress={onAllTags}>{strings.tags.allTags}</DropdownMenuItem>
+                  <DropdownMenuItem onPress={actions.allTags}>
+                    {strings.tags.allTags}
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ),
-            ...(drops
+            ...(takesDrops
               ? {
                   drop: {
                     accept: DROP_ACCEPT,
                     actions: TAG_ACTIONS,
                     onDrop: (event: DropTargetDropEvent) => {
                       const uris = droppedUris(event);
-                      if (uris.length > 0) drops.onTagFiles(uris, tag);
+                      if (uris.length > 0) actions.tagFiles(uris, tag);
                     },
                   } satisfies SidebarTreeItemDrop,
                 }
@@ -287,7 +315,7 @@ export function useSidebarTree(
           key: 'all-tags',
           label: strings.tags.allTags,
           icon: RiPriceTag3Line,
-          onPress: onAllTags,
+          onPress: actions.allTags,
         },
       ],
     });

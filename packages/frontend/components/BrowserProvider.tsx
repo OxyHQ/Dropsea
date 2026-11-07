@@ -11,7 +11,7 @@
 import { useWindowDrag } from '@oxy.so/bloom/drop-zone';
 import { usePlatformFiles } from '@oxy.so/bloom/platform-surface';
 import { router, useGlobalSearchParams, usePathname } from 'expo-router';
-import { createContext, type ReactNode, use, useState } from 'react';
+import { createContext, type ReactNode, use, useLayoutEffect, useRef, useState } from 'react';
 import {
   arrive,
   canGoBack,
@@ -125,10 +125,21 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
   // as the window stays there, so what shows it draws again only when it moves.
   const location = routed ? current : null;
 
-  const navigate = (next: Location) => {
-    if (location && sameLocation(location, next)) return;
+  // Where the window is, read as a press or a drag asks to go somewhere: going and springing open
+  // are the same functions wherever the window is, so the sidebar and what else holds them draw
+  // nothing again as the window goes from place to place.
+  const here = useRef(location);
+  useLayoutEffect(() => {
+    here.current = location;
+  });
+  const [navigate] = useState(() => (next: Location) => {
+    if (here.current && sameLocation(here.current, next)) return;
     router.push(hrefFor(next));
-  };
+  });
+  const [springOpen] = useState(() => (next: Location) => {
+    if (here.current) springBack.opened(here.current);
+    navigate(next);
+  });
   // A drag that sprang folders open and then exits the window without a drop in it (it left, was
   // dropped elsewhere, or Escape cancelled it) takes the window back to where it was.
   useWindowDrag({
@@ -176,10 +187,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     setPreviewWidth,
     isPathBarShown,
     setPathBarShown,
-    springOpen: (next) => {
-      if (location) springBack.opened(location);
-      navigate(next);
-    },
+    springOpen,
     saveName,
     setSaveName,
   };
