@@ -159,6 +159,48 @@ export function useSidebarTree(
           return {
             key,
             label: tag.name,
+            // Finder's menu of a sidebar tag: out of the sidebar, or every tag in Settings.
+            actionsVisibility: 'hover' as const,
+            actions: (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="xs"
+                    iconOnly
+                    appearance="plain"
+                    tone="neutral"
+                    leadingIcon={RiMoreLine}
+                    accessibilityLabel={tag.name}
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem
+                    onPress={() => {
+                      saveDefinitions(
+                        updatedDefinition(definitions, tag.name, { isFavourite: false }),
+                      ).catch((error: unknown) =>
+                        console.warn('Dropsea could not take a tag out of the sidebar', error),
+                      );
+                    }}
+                  >
+                    {strings.tags.removeFromSidebar}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onPress={onAllTags}>{strings.tags.allTags}</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ),
+            // Files dropped on a tag take it, as on Finder's sidebar: nothing moves, so only a
+            // copy is offered, which no source answers by deleting what it dragged.
+            drop: onTagDrop
+              ? {
+                  accept: TAG_DROP_ACCEPT,
+                  actions: TAG_DROP_ACTIONS,
+                  onDrop: ({ data }: DropTargetDropEvent) => {
+                    const uris = data.files.flatMap((file) => (file.uri ? [file.uri] : []));
+                    if (uris.length > 0) onTagDrop(uris, tag);
+                  },
+                }
+              : undefined,
             // The tag's colour in the icon's box, as Finder's sidebar marks it.
             leading: (
               <View className="h-5 w-5 items-center justify-center">
