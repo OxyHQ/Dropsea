@@ -24,12 +24,14 @@ import { SettingsDialog } from '@/components/SettingsDialog';
 import { useBrowser } from '@/components/BrowserProvider';
 import { useAlbumActions } from '@/hooks/use-album-actions';
 import { useFileDrops } from '@/hooks/use-file-drops';
+import { useTagActions } from '@/hooks/use-tag-actions';
 import { useLocalTagsFollowed } from '@/hooks/use-item-tags';
 import { useLocale } from '@/hooks/use-locale';
 import { useLocalPlaces } from '@/hooks/use-local-places';
 import { useSidebarTree } from '@/hooks/use-sidebar-tree';
 import { useViewer } from '@/hooks/use-viewer';
 import { locationKey } from '@/lib/items';
+import { itemsAtUris } from '@/lib/local-files';
 
 const DROPSEA_MARK = require('@/assets/images/icon.png');
 const SIDEBAR_WIDTH = 220;
@@ -56,6 +58,7 @@ export function BrowserShell() {
   const { strings } = useLocale();
   const { places } = useLocalPlaces();
   const fileDrops = useFileDrops(places);
+  const tagActions = useTagActions();
   const isChooser = usePlatformFiles()?.chooser !== undefined;
   // The file chooser changes nothing: its places take no drops.
   const { tree, locations } = useSidebarTree(
@@ -68,6 +71,13 @@ export function BrowserShell() {
           onDropFiles: fileDrops.dropFiles,
           onTrashFiles: fileDrops.trashDropped,
           onSpringOpen: springOpen,
+          onTagFiles: (uris, tag) => {
+            tagActions
+              .change(itemsAtUris(uris), { add: [{ name: tag.name, color: tag.color }] })
+              .catch((error: unknown) =>
+                console.warn('Dropsea could not tag files dropped on a tag', { uris, error }),
+              );
+          },
         },
   );
   const { isSignedIn } = useViewer();

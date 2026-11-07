@@ -34,12 +34,17 @@ import { useTagDefinitions } from '@/hooks/use-tag-definitions';
 import { useViewer } from '@/hooks/use-viewer';
 import { type Location, locationKey } from '@/lib/items';
 import type { LocalPlace } from '@/lib/local-places';
-import { favouriteTags, updatedDefinition } from '@/lib/tags';
+import { favouriteTags, updatedDefinition, type TagDefinition } from '@/lib/tags';
 
 const DROP_ACCEPT = ['files'] as const;
 const PLACE_ACTIONS = ['move', 'copy'] as const;
 /** The Trash takes files as Move to Trash does: moved, never copied. */
 const TRASH_ACTIONS = ['move'] as const;
+/**
+ * A tag takes files as a copy: nothing moves, and a copy is the action no source answers by
+ * deleting what it dragged.
+ */
+const TAG_ACTIONS = ['copy'] as const;
 
 /** What files dropped on the sidebar do. */
 export interface SidebarDrops {
@@ -49,6 +54,8 @@ export interface SidebarDrops {
   onTrashFiles: (uris: readonly string[]) => void;
   /** A place held under a drag springs open in the window. */
   onSpringOpen: (location: Location) => void;
+  /** Onto a tag: they take it, as on Finder's sidebar. */
+  onTagFiles: (uris: readonly string[], tag: TagDefinition) => void;
 }
 
 /** The `file://` URIs a drop brings. */
@@ -77,9 +84,9 @@ const PLACE_ICONS: Record<LocalPlace['kind'], SidebarIcon> = {
  * what can be chosen is: Oxy Files, Photos, the albums and the Trash hold no
  * file the asking application could open.
  *
- * With `drops`, files dropped on a place go into it and on the Trash into the
- * Trash, and a place held under a drag springs open, as Finder's sidebar
- * (OxyOS ADR 0047, decisions 12 and 14).
+ * With `drops`, files dropped on a place go into it, on the Trash into the
+ * Trash and on a tag take the tag, and a place held under a drag springs open,
+ * as Finder's sidebar (OxyOS ADR 0047, decisions 12 and 14; Dropsea ADR 0001).
  */
 export function useSidebarTree(
   places: readonly LocalPlace[],
@@ -255,6 +262,18 @@ export function useSidebarTree(
                 </DropdownMenuContent>
               </DropdownMenu>
             ),
+            ...(drops
+              ? {
+                  drop: {
+                    accept: DROP_ACCEPT,
+                    actions: TAG_ACTIONS,
+                    onDrop: (event: DropTargetDropEvent) => {
+                      const uris = droppedUris(event);
+                      if (uris.length > 0) drops.onTagFiles(uris, tag);
+                    },
+                  } satisfies SidebarTreeItemDrop,
+                }
+              : null),
             // The tag's colour in the icon's box, as Finder's sidebar marks it.
             leading: (
               <View className="h-5 w-5 items-center justify-center">
