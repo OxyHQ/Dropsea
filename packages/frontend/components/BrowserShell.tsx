@@ -19,9 +19,11 @@ import { ProfileButton } from '@oxy.so/services/ui/client';
 import { Slot, usePathname } from 'expo-router';
 import { Image } from 'react-native';
 import { AlbumNameDialog } from '@/components/AlbumNameDialog';
+import { ClashAlert } from '@/components/ClashAlert';
 import { SettingsDialog } from '@/components/SettingsDialog';
 import { useBrowser } from '@/components/BrowserProvider';
 import { useAlbumActions } from '@/hooks/use-album-actions';
+import { useFileDrops } from '@/hooks/use-file-drops';
 import { useLocalTagsFollowed } from '@/hooks/use-item-tags';
 import { useLocale } from '@/hooks/use-locale';
 import { useLocalPlaces } from '@/hooks/use-local-places';
@@ -42,15 +44,31 @@ const WINDOW_MIN = { minWidth: 640, minHeight: 400 };
 const CHOOSER_MIN = { minWidth: 640, minHeight: 440 };
 
 export function BrowserShell() {
-  const { location, navigate, isNewAlbumOpen, setNewAlbumOpen, isSettingsOpen, setSettingsOpen } =
-    useBrowser();
+  const {
+    location,
+    navigate,
+    springOpen,
+    isNewAlbumOpen,
+    setNewAlbumOpen,
+    isSettingsOpen,
+    setSettingsOpen,
+  } = useBrowser();
   const { strings } = useLocale();
   const { places } = useLocalPlaces();
+  const fileDrops = useFileDrops(places);
   const isChooser = usePlatformFiles()?.chooser !== undefined;
+  // The file chooser changes nothing: its places take no drops.
   const { tree, locations } = useSidebarTree(
     places,
     () => setNewAlbumOpen(true),
     () => setSettingsOpen(true),
+    isChooser
+      ? null
+      : {
+          onDropFiles: fileDrops.dropFiles,
+          onTrashFiles: fileDrops.trashDropped,
+          onSpringOpen: springOpen,
+        },
   );
   const { isSignedIn } = useViewer();
   const albumActions = useAlbumActions();
@@ -125,6 +143,7 @@ export function BrowserShell() {
           ],
         }}
       />
+      <ClashAlert />
       {isNewAlbumOpen ? (
         <AlbumNameDialog
           isOpen

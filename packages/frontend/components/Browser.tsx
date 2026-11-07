@@ -58,7 +58,8 @@ import { selectionOnArrival } from '@/lib/history';
 import { previewOnPlatform } from '@/lib/local-files';
 import { type Item, itemKind, type LocalItem, type Location } from '@/lib/items';
 import type { ItemsLayout } from '@/lib/items-layout';
-import { isSameUri, parentUri, pathParts, placeOf, uriName } from '@/lib/local-places';
+import { isSameUri, parentUri, pathParts, uriName } from '@/lib/local-places';
+import { useOperations } from '@/lib/operations';
 import { isSelected, keepShown, type Selection, selectAll } from '@/lib/selection';
 import { groupItems, sortBy, sortItems, visibleItems } from '@/lib/sorting';
 import { TAG_KEYWORD, tagStyleOf } from '@/lib/tags';
@@ -128,6 +129,7 @@ export function Browser({ listing }: { listing: Listing }) {
   const platformMenuBar = usePlatformMenuBar();
   const chooser = usePlatformFiles()?.chooser ?? null;
   const isWindowActive = platformWindow ? platformWindow.active : true;
+  const { progress } = useOperations();
 
   const [rawSelection, setSelection] = useState<Selection>(() =>
     selectionOnArrival(items, browser.cameFrom),
@@ -384,15 +386,13 @@ export function Browser({ listing }: { listing: Listing }) {
       : null,
   });
 
-  const path = location.kind === 'folder' ? pathParts(location.uri, places) : [];
+  const path = location.kind === 'folder' ? pathParts(location.uri, places, strings.computer) : [];
   const enclosing: Location | null =
     location.kind === 'folder' && path.length > 1
       ? { kind: 'folder', uri: parentUri(location.uri) }
       : location.kind === 'album'
         ? { kind: 'albums' }
         : null;
-  const isAtPlace =
-    location.kind === 'folder' && placeOf(location.uri, places)?.uri === location.uri;
 
   const statusText =
     selected.length > 0
@@ -503,6 +503,15 @@ export function Browser({ listing }: { listing: Listing }) {
                   onDrop={commands.drop}
                   dropFolderFor={chooser ? undefined : commands.dropFolderFor}
                   onDropFiles={chooser ? undefined : commands.dropFiles}
+                  onSpringOpen={
+                    chooser
+                      ? undefined
+                      : (folder) => {
+                          if (folder.source === 'local' && folder.isFolder) {
+                            browser.springOpen({ kind: 'folder', uri: folder.uri });
+                          }
+                        }
+                  }
                   onAction={(item, action) => {
                     if (action === 'activate') activate(item);
                     else if (action === 'select') {
@@ -628,6 +637,8 @@ export function Browser({ listing }: { listing: Listing }) {
       onShowingHidden={browser.setShowingHidden}
       isPreviewShown={browser.isPreviewShown}
       onPreviewShown={browser.setPreviewShown}
+      isPathBarShown={browser.isPathBarShown}
+      onPathBarShown={browser.setPathBarShown}
       canGoBack={browser.canGoBack}
       canGoForward={browser.canGoForward}
       onBack={browser.goBack}
@@ -673,6 +684,8 @@ export function Browser({ listing }: { listing: Listing }) {
                 text={statusText}
                 path={path}
                 onPath={(uri) => browser.navigate({ kind: 'folder', uri })}
+                drops={null}
+                progress={null}
               />
             ) : null}
             <ChooserBar
@@ -696,8 +709,13 @@ export function Browser({ listing }: { listing: Listing }) {
         ) : listing.status === 'ready' ? (
           <StatusBar
             text={statusText}
-            path={isAtPlace ? [] : path}
+            path={browser.isPathBarShown ? path : []}
             onPath={(uri) => browser.navigate({ kind: 'folder', uri })}
+            drops={{
+              onDropFiles: commands.dropFiles,
+              onSpringOpen: (uri) => browser.springOpen({ kind: 'folder', uri }),
+            }}
+            progress={progress}
           />
         ) : undefined
       }

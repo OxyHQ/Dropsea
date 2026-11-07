@@ -1,4 +1,5 @@
 import { Button } from '@oxy.so/bloom/button';
+import type { DropTargetDragEvent, DropTargetDropEvent } from '@oxy.so/bloom/drop-zone';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,16 +24,37 @@ import {
   RiSmartphoneLine,
 } from '@oxy.so/bloom/icons';
 import { usePlatformFiles } from '@oxy.so/bloom/platform-surface';
-import type { SidebarIcon, SidebarTree } from '@oxy.so/bloom/sidebar';
+import type { SidebarIcon, SidebarTree, SidebarTreeItemDrop } from '@oxy.so/bloom/sidebar';
 import { View } from 'react-native';
 import { TagMark } from '@/components/TagMark';
 import { useAlbums } from '@/hooks/use-albums';
 import { useLocale } from '@/hooks/use-locale';
+import { useSpringLoading } from '@/hooks/use-spring-loading';
 import { useTagDefinitions } from '@/hooks/use-tag-definitions';
 import { useViewer } from '@/hooks/use-viewer';
 import { type Location, locationKey } from '@/lib/items';
 import type { LocalPlace } from '@/lib/local-places';
 import { favouriteTags, updatedDefinition } from '@/lib/tags';
+
+const DROP_ACCEPT = ['files'] as const;
+const PLACE_ACTIONS = ['move', 'copy'] as const;
+/** The Trash takes files as Move to Trash does: moved, never copied. */
+const TRASH_ACTIONS = ['move'] as const;
+
+/** What files dropped on the sidebar do. */
+export interface SidebarDrops {
+  /** Into a place's folder, moved or copied as the drop says. */
+  onDropFiles: (uris: readonly string[], folderUri: string, action: 'copy' | 'move') => void;
+  /** Into the Trash. */
+  onTrashFiles: (uris: readonly string[]) => void;
+  /** A place held under a drag springs open in the window. */
+  onSpringOpen: (location: Location) => void;
+}
+
+/** The `file://` URIs a drop brings. */
+function droppedUris({ data }: DropTargetDropEvent): string[] {
+  return data.files.flatMap((file) => (file.uri ? [file.uri] : []));
+}
 
 const PLACE_ICONS: Record<LocalPlace['kind'], SidebarIcon> = {
   home: RiHomeLine,
@@ -54,11 +76,16 @@ const PLACE_ICONS: Record<LocalPlace['kind'], SidebarIcon> = {
  * opens. As the file chooser it holds the places on this device alone, where
  * what can be chosen is: Oxy Files, Photos, the albums and the Trash hold no
  * file the asking application could open.
+ *
+ * With `drops`, files dropped on a place go into it and on the Trash into the
+ * Trash, and a place held under a drag springs open, as Finder's sidebar
+ * (OxyOS ADR 0047, decisions 12 and 14).
  */
 export function useSidebarTree(
   places: readonly LocalPlace[],
   onNewAlbum: () => void,
   onAllTags: () => void,
+  drops: SidebarDrops | null,
 ): { tree: SidebarTree[]; locations: ReadonlyMap<string, Location> } {
   const { strings } = useLocale();
   const { isSignedIn } = useViewer();
@@ -66,11 +93,50 @@ export function useSidebarTree(
   const { definitions, save: saveDefinitions } = useTagDefinitions();
   const isChooser = usePlatformFiles()?.chooser !== undefined;
   const locations = new Map<string, Location>();
-  const row = (location: Location, label: string, icon: SidebarIcon) => {
+  const { spring } = useSpringLoading((key) => {
+    const location = locations.get(key);
+    if (location) drops?.onSpringOpen(location);
+  });
+  const row = (
+    location: Location,
+    label: string,
+    icon: SidebarIcon,
+    drop?: SidebarTreeItemDrop,
+  ) => {
     const key = locationKey(location);
     locations.set(key, location);
-    return { key, label, icon };
+    return drop ? { key, label, icon, drop } : { key, label, icon };
   };
+  /** A place's row takes files into its folder, and springs open held under a drag. */
+  const placeDrop = (place: LocalPlace): SidebarTreeItemDrop | undefined => {
+    if (!drops) return undefined;
+    const key = locationKey({ kind: 'folder', uri: place.uri });
+    const hover = (event: DropTargetDragEvent) => spring.hover(event.action ? key : null);
+    return {
+      accept: DROP_ACCEPT,
+      actions: PLACE_ACTIONS,
+      folder: place.uri,
+      onDragEnter: hover,
+      onDragOver: hover,
+      onDragLeave: () => spring.leave(key),
+      onDrop: (event) => {
+        spring.cancel();
+        const uris = droppedUris(event);
+        if (uris.length === 0 || event.action === 'link') return;
+        drops.onDropFiles(uris, place.uri, event.action);
+      },
+    };
+  };
+  const trashDrop: SidebarTreeItemDrop | undefined = drops
+    ? {
+        accept: DROP_ACCEPT,
+        actions: TRASH_ACTIONS,
+        onDrop: (event) => {
+          const uris = droppedUris(event);
+          if (uris.length > 0) drops.onTrashFiles(uris);
+        },
+      }
+    : undefined;
 
   const favourites = places.filter((place) => place.kind !== 'volume');
   const volumes = places.filter((place) => place.kind === 'volume');
@@ -80,7 +146,12 @@ export function useSidebarTree(
       key: 'favourites',
       label: strings.sections.favourites,
       items: favourites.map((place) =>
-        row({ kind: 'folder', uri: place.uri }, place.name, PLACE_ICONS[place.kind]),
+        row(
+          { kind: 'folder', uri: place.uri },
+          place.name,
+          PLACE_ICONS[place.kind],
+          placeDrop(place),
+        ),
       ),
     });
   }
@@ -136,9 +207,9 @@ export function useSidebarTree(
     label: strings.sections.locations,
     items: [
       ...volumes.map((place) =>
-        row({ kind: 'folder', uri: place.uri }, place.name, PLACE_ICONS.volume),
+        row({ kind: 'folder', uri: place.uri }, place.name, PLACE_ICONS.volume, placeDrop(place)),
       ),
-      row({ kind: 'trash' }, strings.trash, RiDeleteBinLine),
+      row({ kind: 'trash' }, strings.trash, RiDeleteBinLine, trashDrop),
     ],
   });
   const sidebarTags = favouriteTags(definitions);

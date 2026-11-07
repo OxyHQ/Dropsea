@@ -11,7 +11,7 @@ import {
 
 const PLACES: LocalPlace[] = [
   { kind: 'home', name: 'ada', uri: 'file:///home/ada' },
-  { kind: 'documents', name: 'Documents', uri: 'file:///home/ada/Documents/' },
+  { kind: 'documents', name: 'Documentos', uri: 'file:///home/ada/Documents/' },
   { kind: 'volume', name: 'USB Stick', uri: 'file:///media/ada/USB%20Stick' },
 ];
 
@@ -35,14 +35,21 @@ describe('local URIs', () => {
   });
 
   test('read in the path bar from the root of their place, keeping their escapes', () => {
-    expect(pathParts('file:///home/ada/Documents/Taxes%202026/', PLACES)).toEqual([
+    expect(pathParts('file:///home/ada/Documents/Taxes%202026/', PLACES, 'Computer')).toEqual([
       { name: 'ada', uri: 'file:///home/ada' },
-      { name: 'Documents', uri: 'file:///home/ada/Documents' },
+      { name: 'Documentos', uri: 'file:///home/ada/Documents' },
       { name: 'Taxes 2026', uri: 'file:///home/ada/Documents/Taxes%202026' },
     ]);
     expect(
-      pathParts('file:///media/ada/USB%20Stick/DCIM', PLACES).map((part) => part.name),
+      pathParts('file:///media/ada/USB%20Stick/DCIM', PLACES, 'Computer').map((part) => part.name),
     ).toEqual(['USB Stick', 'DCIM']);
-    expect(pathParts('file:///etc/passwd', PLACES)).toEqual([]);
+    expect(pathParts('file:///srv/shared/', PLACES, 'Computer')).toEqual([
+      { name: 'Computer', uri: 'file:///' },
+      { name: 'srv', uri: 'file:///srv' },
+      { name: 'shared', uri: 'file:///srv/shared' },
+    ]);
+    expect(pathParts('file:///home/ada', PLACES, 'Computer')).toEqual([
+      { name: 'ada', uri: 'file:///home/ada' },
+    ]);
   });
 });
