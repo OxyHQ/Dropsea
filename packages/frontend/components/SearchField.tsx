@@ -184,7 +184,9 @@ export function SearchField({
         autoFocus={isAutoFocused}
         placeholder={placeholder}
         accessibilityLabel={strings.search}
-        aria-expanded={tokens ? isMenuOpen : undefined}
+        // Said expanded while its suggestions show, and nothing otherwise: a Mac's search field is a
+        // search field to VoiceOver, never a collapsed one.
+        aria-expanded={tokens && isMenuOpen ? true : undefined}
         testID="search"
       />
       {isMenuOpen && frame ? (
