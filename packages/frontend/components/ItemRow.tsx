@@ -175,8 +175,9 @@ export const ItemRow = memo(function ItemRow({
             >
               {item.name}
             </Text>
-            {/* In the Tags column the dots are by the names; else by the item's own. */}
-            {columns.tags ? null : (
+            {/* In the Tags column the dots are by the names; else by the item's own. An item
+                without coloured tags draws nothing there, as its icon view does. */}
+            {columns.tags || dots.length === 0 ? null : (
               <View className="pe-1">
                 <TagDots dots={dots} size={8} edge={isAccented ? edgeAccent : edgePlain} />
               </View>
@@ -230,15 +231,20 @@ export const ItemRow = memo(function ItemRow({
       ) : null}
       {columns.tags ? (
         <View className="flex-row items-center gap-1.5 ps-2" style={{ width: COLUMN_WIDTHS.tags }}>
-          <TagDots dots={dots} size={8} edge={isAccented ? edgeAccent : edgePlain} />
-          <Text
-            variant="body-2-regular"
-            numberOfLines={1}
-            selectable={false}
-            className={`min-w-0 shrink ${secondaryClass}`}
-          >
-            {tagNames.join(', ')}
-          </Text>
+          {/* The column's width is kept for an item without tags; nothing is drawn in it. */}
+          {tagNames.length > 0 ? (
+            <>
+              <TagDots dots={dots} size={8} edge={isAccented ? edgeAccent : edgePlain} />
+              <Text
+                variant="body-2-regular"
+                numberOfLines={1}
+                selectable={false}
+                className={`min-w-0 shrink ${secondaryClass}`}
+              >
+                {tagNames.join(', ')}
+              </Text>
+            </>
+          ) : null}
         </View>
       ) : null}
     </View>

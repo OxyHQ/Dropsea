@@ -4,7 +4,7 @@
  * compile is left as written, silently: it and everything it renders draw
  * again on every change above them, which made a click in a list redraw every
  * row. This runs the compiler Expo's preset uses over each file and fails on
- * any component it gave up on, with its reason.
+ * any component, or hook that makes elements, it gave up on, with its reason.
  */
 import { describe, expect, test } from 'bun:test';
 import { readdirSync } from 'node:fs';
@@ -60,9 +60,12 @@ function bailouts(file: string): string[] {
 }
 
 describe('the React Compiler', () => {
-  test('compiles every component and screen', () => {
-    const files = [...sources('components'), ...sources('app')];
+  test('compiles every component and screen, and the hooks that make what they draw', () => {
+    // A hook that makes elements (the sidebar's tree) left as written makes them anew at every
+    // render: the sidebar drew all its rows at every navigation.
+    const files = [...sources('components'), ...sources('app'), ...sources('hooks')];
     expect(files.length).toBeGreaterThan(20);
     expect(files.flatMap(bailouts)).toEqual([]);
-  });
+    // Compiling every file takes about five seconds, bun's default for a test.
+  }, 60_000);
 });
