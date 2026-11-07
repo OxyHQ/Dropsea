@@ -17,7 +17,7 @@
     "@expo/app-integrity": "~58.0.2",
     "@expo/vector-icons": "^15.1.1",
     "@oxy.so/app-preset": "6.2.0",
-    "@oxy.so/bloom": "17.14.1",
+    "@oxy.so/bloom": "17.18.0",
     "@oxy.so/core": "7.34.0",
     "@oxy.so/services": "14.11.0",
     "@react-native-async-storage/async-storage": "2.2.0",

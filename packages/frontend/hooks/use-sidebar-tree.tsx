@@ -22,7 +22,7 @@ import {
   RiPriceTag3Line,
   RiSmartphoneLine,
 } from '@oxy.so/bloom/icons';
-import { type DropTargetDropEvent, usePlatformFiles } from '@oxy.so/bloom/platform-surface';
+import { usePlatformFiles } from '@oxy.so/bloom/platform-surface';
 import type { SidebarIcon, SidebarTree } from '@oxy.so/bloom/sidebar';
 import { View } from 'react-native';
 import { TagMark } from '@/components/TagMark';
@@ -32,10 +32,7 @@ import { useTagDefinitions } from '@/hooks/use-tag-definitions';
 import { useViewer } from '@/hooks/use-viewer';
 import { type Location, locationKey } from '@/lib/items';
 import type { LocalPlace } from '@/lib/local-places';
-import { favouriteTags, type TagDefinition, updatedDefinition } from '@/lib/tags';
-
-const TAG_DROP_ACCEPT = ['files'] as const;
-const TAG_DROP_ACTIONS = ['copy'] as const;
+import { favouriteTags, updatedDefinition } from '@/lib/tags';
 
 const PLACE_ICONS: Record<LocalPlace['kind'], SidebarIcon> = {
   home: RiHomeLine,
@@ -62,8 +59,6 @@ export function useSidebarTree(
   places: readonly LocalPlace[],
   onNewAlbum: () => void,
   onAllTags: () => void,
-  /** Files dropped on a sidebar tag: they take it. Null where nothing takes drops. */
-  onTagDrop: ((uris: readonly string[], tag: TagDefinition) => void) | null,
 ): { tree: SidebarTree[]; locations: ReadonlyMap<string, Location> } {
   const { strings } = useLocale();
   const { isSignedIn } = useViewer();
@@ -189,18 +184,6 @@ export function useSidebarTree(
                 </DropdownMenuContent>
               </DropdownMenu>
             ),
-            // Files dropped on a tag take it, as on Finder's sidebar: nothing moves, so only a
-            // copy is offered, which no source answers by deleting what it dragged.
-            drop: onTagDrop
-              ? {
-                  accept: TAG_DROP_ACCEPT,
-                  actions: TAG_DROP_ACTIONS,
-                  onDrop: ({ data }: DropTargetDropEvent) => {
-                    const uris = data.files.flatMap((file) => (file.uri ? [file.uri] : []));
-                    if (uris.length > 0) onTagDrop(uris, tag);
-                  },
-                }
-              : undefined,
             // The tag's colour in the icon's box, as Finder's sidebar marks it.
             leading: (
               <View className="h-5 w-5 items-center justify-center">
