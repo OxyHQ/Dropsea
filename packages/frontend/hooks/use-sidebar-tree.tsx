@@ -1,5 +1,11 @@
 import { Button } from '@oxy.so/bloom/button';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@oxy.so/bloom/dropdown-menu';
+import {
   RiAddLine,
   RiCloudLine,
   RiComputerLine,
@@ -11,6 +17,7 @@ import {
   RiHardDrive2Line,
   RiHomeLine,
   RiImageLine,
+  RiMoreLine,
   RiMusic2Line,
   RiPriceTag3Line,
   RiSmartphoneLine,
@@ -25,7 +32,7 @@ import { useTagDefinitions } from '@/hooks/use-tag-definitions';
 import { useViewer } from '@/hooks/use-viewer';
 import { type Location, locationKey } from '@/lib/items';
 import type { LocalPlace } from '@/lib/local-places';
-import { favouriteTags, type TagDefinition } from '@/lib/tags';
+import { favouriteTags, type TagDefinition, updatedDefinition } from '@/lib/tags';
 
 const TAG_DROP_ACCEPT = ['files'] as const;
 const TAG_DROP_ACTIONS = ['copy'] as const;
@@ -61,7 +68,7 @@ export function useSidebarTree(
   const { strings } = useLocale();
   const { isSignedIn } = useViewer();
   const albums = useAlbums();
-  const { definitions } = useTagDefinitions();
+  const { definitions, save: saveDefinitions } = useTagDefinitions();
   const isChooser = usePlatformFiles()?.chooser !== undefined;
   const locations = new Map<string, Location>();
   const row = (location: Location, label: string, icon: SidebarIcon) => {
