@@ -23,7 +23,7 @@
   "overrides": {
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "@oxy.so/bloom": "17.19.3",
+    "@oxy.so/bloom": "17.20.0",
     "@oxy.so/services": "14.14.0",
     "@oxy.so/core": "7.42.0",
     "lightningcss": "1.30.1",
