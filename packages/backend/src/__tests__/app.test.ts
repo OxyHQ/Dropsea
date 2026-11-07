@@ -33,8 +33,18 @@ test('is live and, with every migration applied, ready', async () => {
   expect(await ready.json()).toEqual({ status: 'ready' });
 });
 
-test('refuses /albums with no session', async () => {
+test('refuses /albums and /file-tags with no session', async () => {
   expect((await fetch(`${base}/albums`)).status).toBe(401);
+  expect((await fetch(`${base}/file-tags/names`)).status).toBe(401);
+  expect(
+    (
+      await fetch(`${base}/file-tags/lookup`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ assetIds: ['a'] }),
+      })
+    ).status,
+  ).toBe(401);
 });
 
 test('lets the web app at dropsea.net call it cross-origin, and no unlisted origin', async () => {
