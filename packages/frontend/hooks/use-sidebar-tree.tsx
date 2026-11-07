@@ -165,7 +165,7 @@ export function useSidebarTree(
                     appearance="plain"
                     tone="neutral"
                     leadingIcon={RiMoreLine}
-                    accessibilityLabel={tag.name}
+                    accessibilityLabel={strings.tags.options(tag.name)}
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>

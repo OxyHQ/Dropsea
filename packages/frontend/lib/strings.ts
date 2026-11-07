@@ -132,6 +132,8 @@ const en = {
     showInSidebar: 'Show in Sidebar',
     removeFromSidebar: 'Remove from Sidebar',
     renameTag: 'Rename Tag…',
+    /** The name of a tag's menu button ("…"), never the tag's own name, which its row has. */
+    options: (name: string) => `Options for ${name}`,
     deleteTag: 'Delete Tag…',
     newTag: 'New Tag',
     color: 'Colour',
@@ -431,6 +433,7 @@ const es: Strings = {
     showInSidebar: 'Mostrar en la barra lateral',
     removeFromSidebar: 'Quitar de la barra lateral',
     renameTag: 'Renombrar etiqueta…',
+    options: (name: string) => `Opciones de ${name}`,
     deleteTag: 'Eliminar etiqueta…',
     newTag: 'Etiqueta nueva',
     color: 'Color',

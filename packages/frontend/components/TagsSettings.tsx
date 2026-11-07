@@ -162,7 +162,7 @@ export function TagsSettings() {
                   appearance="plain"
                   tone="neutral"
                   leadingIcon={RiMoreLine}
-                  accessibilityLabel={definition.name}
+                  accessibilityLabel={strings.tags.options(definition.name)}
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent>
