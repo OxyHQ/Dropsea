@@ -88,7 +88,12 @@ export type TrashItem = LocalTrashItem | CloudTrashItem;
 
 /** A place a window shows. */
 export type Location =
-  | { kind: 'folder'; uri: string }
+  | {
+      kind: 'folder';
+      uri: string;
+      /** An item in it to select as the window arrives there, by its URI: a reveal ("Show in Dropsea"). */
+      select?: string;
+    }
   | { kind: 'cloud' }
   | { kind: 'photos' }
   | { kind: 'albums' }

@@ -29,13 +29,13 @@ export function ListHeader({
   onSort,
   columns,
   dateColumn,
-  hasOriginColumn,
+  originColumn,
 }: {
   order: SortOrder;
   onSort: (column: SortColumn) => void;
   columns: ListColumns;
   dateColumn: 'date' | 'deleted' | 'taken';
-  hasOriginColumn: boolean;
+  originColumn: 'origin' | 'location' | null;
 }) {
   const { strings } = useLocale();
   const header = (column: SortColumn, label: string, width: number | null) => {
@@ -77,7 +77,7 @@ export function ListHeader({
   return (
     <View className="mx-2.5 h-7 flex-row items-center border-b border-border px-2">
       {header('name', strings.columns.name, null)}
-      {hasOriginColumn ? (
+      {originColumn !== null ? (
         <Text
           variant="caption-1-medium"
           numberOfLines={1}
@@ -85,7 +85,7 @@ export function ListHeader({
           className="ps-2 text-text-secondary"
           style={{ width: COLUMN_WIDTHS.origin }}
         >
-          {strings.columns.origin}
+          {strings.columns[originColumn]}
         </Text>
       ) : null}
       {columns.date ? header('date', strings.columns[dateColumn], COLUMN_WIDTHS.date) : null}

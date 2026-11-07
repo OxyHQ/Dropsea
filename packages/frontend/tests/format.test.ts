@@ -69,9 +69,10 @@ describe('the words', () => {
     const spanish = stringsFor('es_ES');
     expect(english.trash).toBe('Trash');
     expect(spanish.trash).toBe('Papelera');
+    // A list (a kind's other words) is a value: each language has as many as it has.
     const keys = (value: object): string[] =>
       Object.entries(value).flatMap(([key, inner]) =>
-        inner && typeof inner === 'object'
+        inner && typeof inner === 'object' && !Array.isArray(inner)
           ? keys(inner).map((nested) => `${key}.${nested}`)
           : [key],
       );

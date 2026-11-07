@@ -5,12 +5,28 @@
 import type { PlatformFileError, PlatformPlace } from '@oxy.so/bloom/platform-surface';
 import type { Kind } from '@/lib/kinds';
 import type { NameProblem } from '@/lib/names';
+import type { SearchDate, SearchKind, SearchKindWords } from '@/lib/search';
 import type { TagColor, TagNameProblem } from '@/lib/tags';
 
 type PlaceKind = PlatformPlace['kind'] | 'device';
 
 /** Why a change to a local item did not happen: the platform's reasons and the app's own. */
 export type FileProblem = PlatformFileError | 'unavailable';
+
+/** Finder's kinds as a search offers them, in English. */
+const SEARCH_KINDS_EN: Record<SearchKind, SearchKindWords> = {
+  pdf: { name: 'PDF', aliases: [] },
+  image: { name: 'Image', aliases: ['Picture', 'Photo'] },
+  folder: { name: 'Folder', aliases: ['Directory'] },
+  document: { name: 'Document', aliases: [] },
+  presentation: { name: 'Presentation', aliases: ['Slides'] },
+  spreadsheet: { name: 'Spreadsheet', aliases: [] },
+  text: { name: 'Text', aliases: [] },
+  source: { name: 'Developer', aliases: ['Source', 'Code'] },
+  movie: { name: 'Movie', aliases: ['Video'] },
+  music: { name: 'Music', aliases: ['Audio', 'Song'] },
+  archive: { name: 'Archive', aliases: ['Zip', 'Compressed'] },
+};
 
 const en = {
   appName: 'Dropsea',
@@ -46,6 +62,29 @@ const en = {
   asList: 'as List',
   search: 'Search',
   searchIn: (place: string) => `Search in “${place}”`,
+  /** Searching through the platform's index, Finder's: its scope, its suggestions and its tokens. */
+  searching: {
+    scope: 'Search:',
+    scopeLabel: 'Search Scope',
+    thisComputer: 'This Computer',
+    folder: (name: string) => `“${name}”`,
+    indexing: 'Indexing…',
+    noResults: (query: string) => `No results for “${query}”`,
+    suggestions: 'Search Suggestions',
+    sections: { kinds: 'Kinds', tags: 'Tags', dates: 'Dates' },
+    nameMatches: (text: string) => `Name matches: “${text}”`,
+    /** What each token says before its value: "Kind: PDF". */
+    filters: { category: 'Kind', tag: 'Tag', date: 'Date', name: 'Name' },
+    /** Each kind's name, and other words it is found by as they are typed. */
+    kinds: SEARCH_KINDS_EN,
+    dates: {
+      today: 'Today',
+      yesterday: 'Yesterday',
+      week: 'This Week',
+      month: 'This Month',
+      year: 'This Year',
+    } satisfies Record<SearchDate, string>,
+  },
   columns: {
     name: 'Name',
     date: 'Date Modified',
@@ -54,6 +93,7 @@ const en = {
     size: 'Size',
     kind: 'Kind',
     origin: 'Where From',
+    location: 'Location',
     tags: 'Tags',
   },
   kinds: {
@@ -367,6 +407,38 @@ const es: Strings = {
   asList: 'como lista',
   search: 'Buscar',
   searchIn: (place) => `Buscar en «${place}»`,
+  searching: {
+    scope: 'Buscar:',
+    scopeLabel: 'Ámbito de la búsqueda',
+    thisComputer: 'Este ordenador',
+    folder: (name) => `«${name}»`,
+    indexing: 'Indexando…',
+    noResults: (query) => `No hay resultados para «${query}»`,
+    suggestions: 'Sugerencias de búsqueda',
+    sections: { kinds: 'Clases', tags: 'Etiquetas', dates: 'Fechas' },
+    nameMatches: (text) => `El nombre coincide con «${text}»`,
+    filters: { category: 'Clase', tag: 'Etiqueta', date: 'Fecha', name: 'Nombre' },
+    kinds: {
+      pdf: { name: 'PDF', aliases: [] },
+      image: { name: 'Imagen', aliases: ['Foto', 'Fotografía'] },
+      folder: { name: 'Carpeta', aliases: ['Directorio'] },
+      document: { name: 'Documento', aliases: [] },
+      presentation: { name: 'Presentación', aliases: ['Diapositivas'] },
+      spreadsheet: { name: 'Hoja de cálculo', aliases: [] },
+      text: { name: 'Texto', aliases: [] },
+      source: { name: 'Desarrollo', aliases: ['Código', 'Fuente'] },
+      movie: { name: 'Película', aliases: ['Vídeo', 'Video'] },
+      music: { name: 'Música', aliases: ['Audio', 'Canción'] },
+      archive: { name: 'Archivo comprimido', aliases: ['Zip', 'Comprimido'] },
+    },
+    dates: {
+      today: 'Hoy',
+      yesterday: 'Ayer',
+      week: 'Esta semana',
+      month: 'Este mes',
+      year: 'Este año',
+    },
+  },
   columns: {
     name: 'Nombre',
     date: 'Fecha de modificación',
@@ -375,6 +447,7 @@ const es: Strings = {
     size: 'Tamaño',
     kind: 'Clase',
     origin: 'Procedencia',
+    location: 'Ubicación',
     tags: 'Etiquetas',
   },
   kinds: {
