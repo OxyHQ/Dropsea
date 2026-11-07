@@ -106,10 +106,19 @@ describe('items', () => {
       deletedAt: 7,
       size: 1,
       lastModified: 2,
+      tags: [
+        { name: 'Red', color: 'red' },
+        { name: 'From a Mac', color: null },
+      ],
     });
     expect(fromDevice).toMatchObject({
       key: fromDevice.uri,
       originalUri: 'file:///home/ada/a.txt',
+      // The Trash keeps an item's tags.
+      tags: [
+        { name: 'Red', color: 'red' },
+        { name: 'From a Mac', color: null },
+      ],
     });
     expect(itemDate(fromDevice)).toBe(7);
     expect(assetIdOf(fromDevice)).toBeNull();
