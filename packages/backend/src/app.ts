@@ -11,6 +11,7 @@ import { config } from './config';
 import { assertMigrationsCurrent, checkPostgresHealth } from './db/postgres';
 import { errorHandler, unknownRoute } from './middleware/errorHandler';
 import { createAlbumsRouter } from './routes/albums.routes';
+import { createFileTagsRouter } from './routes/file-tags.routes';
 import type { PhotoSource } from './services/photos.service';
 import { logger } from './utils/logger';
 
@@ -55,6 +56,12 @@ export function createApp(oxy: OxyServer, photos: PhotoSource): Express {
     createOxyRateLimit(oxy),
     createOxyAuthMiddleware(oxy),
     createAlbumsRouter(photos),
+  );
+  app.use(
+    '/file-tags',
+    createOxyRateLimit(oxy),
+    createOxyAuthMiddleware(oxy),
+    createFileTagsRouter(),
   );
 
   // Last: a path no route serves, then every thrown error, as typed JSON.
