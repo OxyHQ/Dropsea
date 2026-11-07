@@ -25,6 +25,7 @@ import {
 } from '@/lib/local-files';
 import { isSameUri, parentUri } from '@/lib/local-places';
 import { freeName } from '@/lib/names';
+import { forgetFileTags } from '@/lib/dropsea-api';
 import { oxyServices } from '@/lib/oxy';
 import { type Replayed, recordMove, redoMove, undoMove } from '@/lib/undo';
 
@@ -86,6 +87,19 @@ export function useFileActions() {
     reportLocal(done.outcomes);
   };
   /** Runs a change on each cloud item, saying which failed. */
+  /**
+   * Deletes an asset for good, and then the tags Dropsea kept for it: a tag outliving its file
+   * would be found in no place. Their rows are only ever read by their owner, so one left behind
+   * by a failure is said and does no harm.
+   */
+  const deleteAsset = async (assetId: string) => {
+    await oxyServices.assets.delete(assetId);
+    try {
+      await forgetFileTags([assetId]);
+    } catch (error) {
+      console.warn('Dropsea deleted a file and could not forget its tags', { assetId, error });
+    }
+  };
   const eachCloud = async (
     items: readonly { assetId: string; name: string }[],
     change: (assetId: string) => Promise<unknown>,
@@ -229,7 +243,7 @@ export function useFileActions() {
         await refreshPlatformTrash();
       }
       if (cloud.length > 0) {
-        await eachCloud(cloud, (assetId) => oxyServices.assets.delete(assetId), 'delete a file');
+        await eachCloud(cloud, deleteAsset, 'delete a file');
       }
     },
 
@@ -264,7 +278,7 @@ export function useFileActions() {
         hasMore = page.hasMore;
         offset += EMPTY_PAGE_SIZE;
       }
-      await eachCloud(trashed, (assetId) => oxyServices.assets.delete(assetId), 'delete a file');
+      await eachCloud(trashed, deleteAsset, 'delete a file');
     },
   };
 }

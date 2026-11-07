@@ -7,7 +7,18 @@ import type {
   AddAlbumItemsResponse,
   Album,
   AlbumItemsPage,
+  ChangeFileTagsRequest,
   CreateAlbumRequest,
+  FileTagName,
+  FileTagNamesResponse,
+  FileTagsByAsset,
+  FileTagsCountResponse,
+  FileTagsResponse,
+  ForgetFileTagsRequest,
+  LookupFileTagsRequest,
+  RemoveFileTagNameRequest,
+  RenameFileTagRequest,
+  TaggedAssetsPage,
   UpdateAlbumRequest,
 } from '@dropsea/shared-types';
 import { DROPSEA_API_URL } from '@/lib/config';
@@ -67,4 +78,60 @@ export async function removeAlbumItem(albumId: string, itemId: string): Promise<
   await backend.delete(
     `/albums/${encodeURIComponent(albumId)}/items/${encodeURIComponent(itemId)}`,
   );
+}
+
+/** The tags of each asset, in each one's order; an asset without tags is left out. */
+export async function lookupFileTags(assetIds: readonly string[]): Promise<FileTagsByAsset> {
+  const request: LookupFileTagsRequest = { assetIds: [...assetIds] };
+  const response = await backend.post<FileTagsResponse>('/file-tags/lookup', request);
+  return response.tags;
+}
+
+/** A page of the person's assets with a tag (case aside), most recently tagged first. */
+export async function listTaggedAssets(
+  name: string,
+  cursor: string | null,
+): Promise<TaggedAssetsPage> {
+  return backend.get<TaggedAssetsPage>('/file-tags', {
+    params: { name, ...(cursor ? { cursor } : {}) },
+  });
+}
+
+/** Every tag on the person's assets, and how many carry it. */
+export async function listFileTagNames(): Promise<FileTagName[]> {
+  const response = await backend.get<FileTagNamesResponse>('/file-tags/names');
+  return response.names;
+}
+
+/** Takes `remove` off assets, then puts `add` on them; each asset's tags after. */
+export async function changeFileTags(
+  assetIds: readonly string[],
+  add: readonly string[],
+  remove: readonly string[],
+): Promise<FileTagsByAsset> {
+  const request: ChangeFileTagsRequest = {
+    assetIds: [...assetIds],
+    add: [...add],
+    remove: [...remove],
+  };
+  const response = await backend.post<FileTagsResponse>('/file-tags/change', request);
+  return response.tags;
+}
+
+/** Renames a tag on every asset that has it. */
+export async function renameFileTag(from: string, to: string): Promise<void> {
+  const request: RenameFileTagRequest = { from, to };
+  await backend.post<FileTagsCountResponse>('/file-tags/rename', request);
+}
+
+/** Takes a tag off every asset that has it. */
+export async function removeFileTag(name: string): Promise<void> {
+  const request: RemoveFileTagNameRequest = { name };
+  await backend.post<FileTagsCountResponse>('/file-tags/remove-name', request);
+}
+
+/** Forgets the tags of assets deleted for good. */
+export async function forgetFileTags(assetIds: readonly string[]): Promise<void> {
+  const request: ForgetFileTagsRequest = { assetIds: [...assetIds] };
+  await backend.post<FileTagsCountResponse>('/file-tags/forget', request);
 }

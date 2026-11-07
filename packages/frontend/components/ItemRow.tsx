@@ -6,17 +6,21 @@
  *
  * A screen reader reads it as VoiceOver reads a Finder row: its name, then
  * what its columns say (where it was, its date, size and kind), whichever of
- * them the window is wide enough to draw.
+ * them the window is wide enough to draw, and its tags, always: the dots by
+ * its name are drawn in every width.
  */
+import { useTheme } from '@oxy.so/bloom/theme';
 import { Text } from '@oxy.so/bloom/typography';
 import { type ComponentRef, memo } from 'react';
 import { type AccessibilityActionInfo, View } from 'react-native';
 import { ItemIcon } from '@/components/ItemIcon';
 import { COLUMN_WIDTHS, type ListColumns } from '@/components/ListHeader';
 import { RenameField } from '@/components/RenameField';
+import { TagDots, tagDots } from '@/components/TagDots';
 import { useLocale } from '@/hooks/use-locale';
 import { formatDate, formatSize } from '@/lib/format';
 import { type Item, itemDate, itemKind } from '@/lib/items';
+import { type ItemTag, orderedTags, type TagStyle, tagColorOf } from '@/lib/tags';
 
 /** What the field a name is being edited in reports. */
 export interface RenameHandlers {
@@ -40,6 +44,9 @@ export interface ItemRowProps {
   hasOriginColumn: boolean;
   origin: string;
   thumbnailUrl: string | null;
+  /** Its tags, as they were read; drawn in the person's order. */
+  tags: readonly ItemTag[];
+  tagStyle: TagStyle;
   accessibilityActions: readonly AccessibilityActionInfo[];
   onAccessibilityAction: (item: Item, action: string) => void;
   /** Its view as it is drawn (null as it goes): what screen-reader focus and a menu opened from the keyboard go to. */
@@ -62,12 +69,15 @@ export const ItemRow = memo(function ItemRow({
   hasOriginColumn,
   origin,
   thumbnailUrl,
+  tags,
+  tagStyle,
   accessibilityActions,
   onAccessibilityAction,
   onView,
   onImageView,
 }: ItemRowProps) {
   const { strings, locale } = useLocale();
+  const theme = useTheme();
   const kind = itemKind(item);
   const date = itemDate(item);
   const isAccented = isSelected && isWindowActive;
@@ -81,6 +91,9 @@ export const ItemRow = memo(function ItemRow({
         ? 'bg-fill/40'
         : '';
   const textClass = isAccented ? 'text-primary-foreground' : 'text-foreground';
+  // The dots' edge: the selection's accent, else the window's background.
+  const edgeAccent = theme.colors.primary;
+  const edgePlain = theme.colors.background;
   const secondaryClass = isAccented ? 'text-primary-foreground' : 'text-text-secondary';
   const iconSize = height > 30 ? 28 : 18;
   const dateText = date === null ? '--' : formatDate(date, Date.now(), locale, strings);
@@ -91,12 +104,16 @@ export const ItemRow = memo(function ItemRow({
         ? '--'
         : formatSize(item.size, strings.units, locale);
   const kindText = strings.kinds[kind];
+  const shownTags = orderedTags(tags, tagStyle.order);
+  const dots = tagDots(shownTags, (tag) => tagColorOf(tag, tagStyle.known));
+  const tagNames = shownTags.map((tag) => tag.name);
   // What the row's columns say, in their order, as the reader says them after its name.
   const columnsText = [
     hasOriginColumn ? origin : null,
     columns.date && date !== null ? dateText : null,
     columns.size && sizeText !== '--' ? sizeText : null,
     columns.kind ? kindText : null,
+    tagNames.length > 0 ? strings.tags.spoken(tagNames) : null,
   ]
     .filter((text) => text !== null && text !== '')
     .join(', ');
@@ -158,6 +175,12 @@ export const ItemRow = memo(function ItemRow({
             >
               {item.name}
             </Text>
+            {/* In the Tags column the dots are by the names; else by the item's own. */}
+            {columns.tags ? null : (
+              <View className="pe-1">
+                <TagDots dots={dots} size={8} edge={isAccented ? edgeAccent : edgePlain} />
+              </View>
+            )}
           </View>
         </View>
       )}
@@ -204,6 +227,19 @@ export const ItemRow = memo(function ItemRow({
         >
           {kindText}
         </Text>
+      ) : null}
+      {columns.tags ? (
+        <View className="flex-row items-center gap-1.5 ps-2" style={{ width: COLUMN_WIDTHS.tags }}>
+          <TagDots dots={dots} size={8} edge={isAccented ? edgeAccent : edgePlain} />
+          <Text
+            variant="body-2-regular"
+            numberOfLines={1}
+            selectable={false}
+            className={`min-w-0 shrink ${secondaryClass}`}
+          >
+            {tagNames.join(', ')}
+          </Text>
+        </View>
       ) : null}
     </View>
   );

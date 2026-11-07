@@ -9,14 +9,18 @@ import {
   ContextMenuSub,
   ContextMenuSubContent,
   ContextMenuSubTrigger,
+  ContextMenuSwatchRow,
 } from '@oxy.so/bloom/context-menu';
+import { useTheme } from '@oxy.so/bloom/theme';
 import type { ViewMode } from '@/components/BrowserProvider';
 import type { Commands } from '@/hooks/use-commands';
 import { useLocale } from '@/hooks/use-locale';
 import type { Item, Location } from '@/lib/items';
+import { tagColorValue } from '@/lib/tags';
 
 export function ItemMenuRows({ item, commands }: { item: Item; commands: Commands }) {
   const { strings } = useLocale();
+  const theme = useTheme();
   if (item.source === 'local-trash' || item.source === 'cloud-trash') {
     return (
       <>
@@ -28,6 +32,9 @@ export function ItemMenuRows({ item, commands }: { item: Item; commands: Command
     );
   }
   const enabledAlbums = commands.addToAlbum.filter(({ command }) => command.isEnabled);
+  const coloured = commands.tagChoices.flatMap((choice) =>
+    choice.definition.color ? [{ ...choice, color: choice.definition.color }] : [],
+  );
   return (
     <>
       <ContextMenuItem onPress={() => commands.openItem(item)}>
@@ -36,6 +43,7 @@ export function ItemMenuRows({ item, commands }: { item: Item; commands: Command
       {commands.preview.isEnabled ? (
         <ContextMenuItem onPress={commands.preview.run}>{strings.menus.preview}</ContextMenuItem>
       ) : null}
+      <ContextMenuItem onPress={commands.getInfo.run}>{strings.getInfo}</ContextMenuItem>
       <ContextMenuSeparator />
       {commands.rename.isEnabled ? (
         <ContextMenuItem onPress={commands.rename.run}>{strings.menus.rename}</ContextMenuItem>
@@ -84,6 +92,33 @@ export function ItemMenuRows({ item, commands }: { item: Item; commands: Command
           <ContextMenuItem tone="danger" onPress={commands.deleteAlbum.run}>
             {strings.menus.deleteAlbum}
           </ContextMenuItem>
+        </>
+      ) : null}
+      {commands.editTags.isEnabled ? (
+        <>
+          <ContextMenuSeparator />
+          {/* Finder's row of colour dots: each favourite tag with a colour, on all of the
+              selection, on some, or on none; a press puts it on all or takes it off all. */}
+          {coloured.length > 0 ? (
+            <ContextMenuSwatchRow
+              accessibilityLabel={strings.tags.section}
+              swatches={coloured.map(({ definition, color, state, command }) => ({
+                key: definition.name,
+                color: tagColorValue(color, theme.isDark),
+                name: definition.name,
+                state,
+                caption:
+                  state === 'on'
+                    ? strings.tags.remove(definition.name)
+                    : strings.tags.add(definition.name),
+                disabled: !command.isEnabled,
+              }))}
+              onSelect={(key) =>
+                coloured.find(({ definition }) => definition.name === key)?.command.run()
+              }
+            />
+          ) : null}
+          <ContextMenuItem onPress={commands.editTags.run}>{strings.tags.menu}</ContextMenuItem>
         </>
       ) : null}
       {commands.moveToTrash.isEnabled ? (

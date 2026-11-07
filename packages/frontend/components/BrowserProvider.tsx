@@ -51,6 +51,9 @@ interface BrowserValue {
   setShowingHidden: (isShowing: boolean) => void;
   isNewAlbumOpen: boolean;
   setNewAlbumOpen: (isOpen: boolean) => void;
+  /** Dropsea's settings (its Tags), open over the window. */
+  isSettingsOpen: boolean;
+  setSettingsOpen: (isOpen: boolean) => void;
   /** Whether the window shows its preview pane (View > Show Preview), in every place. */
   isPreviewShown: boolean;
   setPreviewShown: (isShown: boolean) => void;
@@ -84,6 +87,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
   const [cameFrom, setCameFrom] = useState<Location | null>(null);
   const [isShowingHidden, setShowingHidden] = useState(false);
   const [isNewAlbumOpen, setNewAlbumOpen] = useState(false);
+  const [isSettingsOpen, setSettingsOpen] = useState(false);
   const [isPreviewShown, setPreviewShown] = useState(false);
   const [previewWidth, setPreviewWidth] = useState(PREVIEW_WIDTH);
   const suggestedName = usePlatformFiles()?.chooser?.request.suggestedName ?? '';
@@ -131,6 +135,8 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     setShowingHidden,
     isNewAlbumOpen,
     setNewAlbumOpen,
+    isSettingsOpen,
+    setSettingsOpen,
     isPreviewShown,
     setPreviewShown,
     previewWidth,

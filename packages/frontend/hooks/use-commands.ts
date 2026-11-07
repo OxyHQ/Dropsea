@@ -3,6 +3,7 @@ import { toast } from '@oxy.so/bloom/toast';
 import { useAlbumActions } from '@/hooks/use-album-actions';
 import { useFileActions } from '@/hooks/use-file-actions';
 import { useLocale } from '@/hooks/use-locale';
+import { canTag, type TagChange, useTagActions } from '@/hooks/use-tag-actions';
 import { useTransfers } from '@/hooks/use-transfers';
 import { useViewer } from '@/hooks/use-viewer';
 import type { Selection } from '@/lib/selection';
@@ -20,6 +21,7 @@ import { hasLocalFiles } from '@/lib/local-files';
 import { isSameUri, type LocalPlace, uriName } from '@/lib/local-places';
 import { downloadableOf } from '@/lib/transfers';
 import { useHistory } from '@/lib/undo';
+import { favouriteTags, type ItemTag, tagState, toggledTag } from '@/lib/tags';
 
 /** Something the person can do now, from a menu, a key or a screen reader. */
 export interface Command {
@@ -51,6 +53,12 @@ export interface CommandContext {
   newAlbum: () => void;
   setSelection: (selection: Selection) => void;
   selectAll: () => void;
+  /** Each item's tags, as the place read them. */
+  tagsOf: (item: Item) => readonly ItemTag[];
+  /** Opens the Tags… panel for items. */
+  editTags: (items: readonly Item[]) => void;
+  /** Opens Get Info for items. */
+  getInfo: (items: readonly Item[]) => void;
 }
 
 function isLocal(item: Item): item is LocalItem {
@@ -118,6 +126,9 @@ export function useCommands(context: CommandContext) {
     newAlbum,
     setSelection,
     selectAll,
+    tagsOf,
+    editTags,
+    getInfo,
   } = context;
   const fileActions = useFileActions();
   const transfers = useTransfers();
@@ -125,6 +136,7 @@ export function useCommands(context: CommandContext) {
   const { isSignedIn, signIn } = useViewer();
   const { strings } = useLocale();
   const history = useHistory();
+  const tagActions = useTagActions();
 
   const isInTrash = location.kind === 'trash';
   const isInFolder = location.kind === 'folder';
@@ -151,6 +163,12 @@ export function useCommands(context: CommandContext) {
   const albumSelected =
     first?.source === 'album' ? albums.find((each) => each.id === first.albumId) : null;
   const shownAlbum = album ?? (selected.length === 1 ? (albumSelected ?? null) : null);
+
+  // Tags change on files of this device and Oxy Files' assets, never on albums or in a Trash.
+  const isAllTaggable = selected.length > 0 && selected.every(canTag);
+  const selectedTags = selected.map(tagsOf);
+  const changeTags = (change: TagChange) =>
+    runAsync('change tags', () => tagActions.change(selected, change));
 
   const open = (item: Item) => {
     if (item.source === 'local' && item.isFolder) navigate({ kind: 'folder', uri: item.uri });
@@ -242,6 +260,28 @@ export function useCommands(context: CommandContext) {
     redoName: history.redo ? moveName(history.redo, strings.menus.redoMove) : strings.menus.redo,
     selectAll: command(shown.length > 0, selectAll),
     signIn: command(!isSignedIn, signIn),
+
+    /** File › Tags…: the selection's tags in a panel, to add, remove and type. */
+    editTags: command(isAllTaggable, () => editTags(selected)),
+    /** File › Get Info: the selection's facts and tags. */
+    getInfo: command(selected.length > 0, () => getInfo(selected)),
+    /**
+     * The person's favourite tags, as the context menu's dots and the keyboard offer them: each
+     * on all the selection, on none or on some, and choosing it puts it on all or takes it off all.
+     */
+    tagChoices: favouriteTags(tagActions.definitions).map((definition) => ({
+      definition,
+      state: tagState(selectedTags, definition.name),
+      command: command(isAllTaggable, () =>
+        changeTags(toggledTag(selectedTags, { name: definition.name, color: definition.color })),
+      ),
+    })),
+    /** Every tag off the selection, as Finder's Control-0. */
+    removeAllTags: command(isAllTaggable && selectedTags.some((tags) => tags.length > 0), () =>
+      changeTags({ remove: [...new Set(selectedTags.flat().map((tag) => tag.name))] }),
+    ),
+    changeTags: (items: readonly Item[], change: TagChange) =>
+      runAsync('change tags', () => tagActions.change(items, change)),
 
     /** Dropping dragged items on an item: into a folder, into an album. */
     canDrop: (dragged: readonly Item[], target: Item) => {

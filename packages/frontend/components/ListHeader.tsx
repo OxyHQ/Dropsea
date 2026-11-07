@@ -18,10 +18,11 @@ export interface ListColumns {
   date: boolean;
   size: boolean;
   kind: boolean;
+  tags: boolean;
 }
 
 /** Each column's width, shared by the header and the rows. */
-export const COLUMN_WIDTHS = { date: 190, size: 90, kind: 140, origin: 160 };
+export const COLUMN_WIDTHS = { date: 190, size: 90, kind: 140, origin: 160, tags: 140 };
 
 export function ListHeader({
   order,
@@ -90,6 +91,7 @@ export function ListHeader({
       {columns.date ? header('date', strings.columns[dateColumn], COLUMN_WIDTHS.date) : null}
       {columns.size ? header('size', strings.columns.size, COLUMN_WIDTHS.size) : null}
       {columns.kind ? header('kind', strings.columns.kind, COLUMN_WIDTHS.kind) : null}
+      {columns.tags ? header('tags', strings.columns.tags, COLUMN_WIDTHS.tags) : null}
     </View>
   );
 }

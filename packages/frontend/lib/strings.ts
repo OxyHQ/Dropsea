@@ -5,6 +5,7 @@
 import type { PlatformFileError, PlatformPlace } from '@oxy.so/bloom/platform-surface';
 import type { Kind } from '@/lib/kinds';
 import type { NameProblem } from '@/lib/names';
+import type { TagColor, TagNameProblem } from '@/lib/tags';
 
 type PlaceKind = PlatformPlace['kind'] | 'device';
 
@@ -52,6 +53,7 @@ const en = {
     size: 'Size',
     kind: 'Kind',
     origin: 'Where From',
+    tags: 'Tags',
   },
   kinds: {
     folder: 'Folder',
@@ -99,6 +101,68 @@ const en = {
   },
   today: (time: string) => `Today at ${time}`,
   yesterday: (time: string) => `Yesterday at ${time}`,
+  tags: {
+    section: 'Tags',
+    colors: {
+      red: 'Red',
+      orange: 'Orange',
+      yellow: 'Yellow',
+      green: 'Green',
+      blue: 'Blue',
+      purple: 'Purple',
+      grey: 'Grey',
+    } satisfies Record<TagColor, string>,
+    noColor: 'None',
+    /** The word a search takes a tag with, `tag:Red`, besides the English one. */
+    keyword: 'tag',
+    field: 'Tags',
+    fieldPlaceholder: 'Add Tags…',
+    menu: 'Tags…',
+    button: 'Tags',
+    editTitle: (count: number, name: string) =>
+      count === 1 ? `Tags of “${name}”` : `Tags of ${count} Items`,
+    add: (name: string) => `Add Tag “${name}”`,
+    remove: (name: string) => `Remove Tag “${name}”`,
+    removeAll: 'Remove All Tags',
+    /** What a screen reader says of an item's tags, after its other facts. */
+    spoken: (names: readonly string[]) =>
+      names.length === 1 ? `Tag ${names[0]}` : `Tags ${names.join(', ')}`,
+    noTags: 'No Tags',
+    allTags: 'All Tags…',
+    showInSidebar: 'Show in Sidebar',
+    removeFromSidebar: 'Remove from Sidebar',
+    renameTag: 'Rename Tag…',
+    deleteTag: 'Delete Tag…',
+    newTag: 'New Tag',
+    color: 'Colour',
+    deleteTitle: (name: string) => `Delete the tag “${name}”?`,
+    deleteBody: 'It is removed from every item that has it.',
+    deleteAction: 'Delete Tag',
+    renameTitle: 'Rename Tag',
+    tagName: 'Tag name',
+    empty: (name: string) => `Nothing is tagged “${name}”`,
+    emptyHint: 'Items you give this tag appear here, from this device and Oxy Files.',
+    problems: {
+      empty: 'A tag needs a name.',
+      separator: 'A tag’s name cannot contain a comma or a line break.',
+      'too-long': 'That name is too long for a tag.',
+      taken: 'A tag with that name already exists.',
+    } satisfies Record<TagNameProblem, string>,
+    couldNotChange: (count: number) =>
+      count === 1
+        ? 'The tags of one item could not be changed.'
+        : `The tags of ${count} items could not be changed.`,
+    settingsTitle: 'Tags',
+    settingsHint:
+      'Your tags, in the order the sidebar and menus show them. Drag to reorder; renaming a tag renames it on every item.',
+  },
+  settings: 'Settings…',
+  getInfo: 'Get Info',
+  info: (name: string) => `“${name}” Info`,
+  infoOfItems: (count: number) => `${count} Items Info`,
+  groupBy: 'Group By',
+  useGroups: 'Use Groups',
+  noGroups: 'None',
   untitledFolder: 'untitled folder',
   untitledAlbum: 'Untitled Album',
   menus: {
@@ -281,6 +345,7 @@ const es: Strings = {
     size: 'Tamaño',
     kind: 'Clase',
     origin: 'Procedencia',
+    tags: 'Etiquetas',
   },
   kinds: {
     folder: 'Carpeta',
@@ -329,6 +394,66 @@ const es: Strings = {
   },
   today: (time) => `Hoy a las ${time}`,
   yesterday: (time) => `Ayer a las ${time}`,
+  tags: {
+    section: 'Etiquetas',
+    colors: {
+      red: 'Rojo',
+      orange: 'Naranja',
+      yellow: 'Amarillo',
+      green: 'Verde',
+      blue: 'Azul',
+      purple: 'Morado',
+      grey: 'Gris',
+    },
+    noColor: 'Ninguno',
+    keyword: 'etiqueta',
+    field: 'Etiquetas',
+    fieldPlaceholder: 'Añadir etiquetas…',
+    menu: 'Etiquetas…',
+    button: 'Etiquetas',
+    editTitle: (count, name) =>
+      count === 1 ? `Etiquetas de “${name}”` : `Etiquetas de ${count} elementos`,
+    add: (name) => `Añadir la etiqueta “${name}”`,
+    remove: (name) => `Quitar la etiqueta “${name}”`,
+    removeAll: 'Quitar todas las etiquetas',
+    spoken: (names) =>
+      names.length === 1 ? `Etiqueta ${names[0]}` : `Etiquetas ${names.join(', ')}`,
+    noTags: 'Sin etiquetas',
+    allTags: 'Todas las etiquetas…',
+    showInSidebar: 'Mostrar en la barra lateral',
+    removeFromSidebar: 'Quitar de la barra lateral',
+    renameTag: 'Renombrar etiqueta…',
+    deleteTag: 'Eliminar etiqueta…',
+    newTag: 'Etiqueta nueva',
+    color: 'Color',
+    deleteTitle: (name) => `¿Eliminar la etiqueta “${name}”?`,
+    deleteBody: 'Se quita de todos los elementos que la tienen.',
+    deleteAction: 'Eliminar etiqueta',
+    renameTitle: 'Renombrar etiqueta',
+    tagName: 'Nombre de la etiqueta',
+    empty: (name) => `No hay nada con la etiqueta “${name}”`,
+    emptyHint: 'Lo que tenga esta etiqueta aparece aquí, de este dispositivo y de Oxy Files.',
+    problems: {
+      empty: 'Una etiqueta necesita un nombre.',
+      separator: 'El nombre de una etiqueta no puede tener comas ni saltos de línea.',
+      'too-long': 'Ese nombre es demasiado largo para una etiqueta.',
+      taken: 'Ya hay una etiqueta con ese nombre.',
+    },
+    couldNotChange: (count) =>
+      count === 1
+        ? 'No se han podido cambiar las etiquetas de un elemento.'
+        : `No se han podido cambiar las etiquetas de ${count} elementos.`,
+    settingsTitle: 'Etiquetas',
+    settingsHint:
+      'Tus etiquetas, en el orden en que las muestran la barra lateral y los menús. Arrastra para ordenarlas; renombrar una etiqueta la renombra en todos los elementos.',
+  },
+  settings: 'Ajustes…',
+  getInfo: 'Obtener información',
+  info: (name) => `Información de “${name}”`,
+  infoOfItems: (count) => `Información de ${count} elementos`,
+  groupBy: 'Agrupar por',
+  useGroups: 'Usar grupos',
+  noGroups: 'Ninguno',
   untitledFolder: 'carpeta sin título',
   untitledAlbum: 'Álbum sin título',
   menus: {
