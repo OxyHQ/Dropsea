@@ -211,7 +211,12 @@ describe('grouping by tag', () => {
         d: [tag('Alpha')],
         e: [tag('Red'), tag('Work')],
       })[name] ?? [];
-    expect(groupByTag(['a', 'b', 'c', 'd', 'e'], tagsOf, order)).toEqual([
+    expect(
+      groupByTag(['a', 'b', 'c', 'd', 'e'], tagsOf, order).map(({ tag, items }) => ({
+        name: tag?.name ?? null,
+        items,
+      })),
+    ).toEqual([
       { name: 'red', items: ['b', 'e'] },
       { name: 'Blue', items: ['a'] },
       { name: 'Alpha', items: ['d'] },

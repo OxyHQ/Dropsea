@@ -363,9 +363,9 @@ export function orderedTags(
     .map(({ tag }) => tag);
 }
 
-/** A group of items by tag: its tag's name (null for the items with none) and its items. */
+/** A group of items by tag: its tag, as its first item has it (null for the items with none), and its items. */
 export interface TagGroup<T> {
-  name: string | null;
+  tag: ItemTag | null;
   items: T[];
 }
 
@@ -380,7 +380,7 @@ export function groupByTag<T>(
   tagsOf: (item: T) => readonly ItemTag[],
   order: ReadonlyMap<string, number>,
 ): TagGroup<T>[] {
-  const groups = new Map<string, { name: string | null; rank: [number, string]; items: T[] }>();
+  const groups = new Map<string, { tag: ItemTag | null; rank: [number, string]; items: T[] }>();
   for (const item of items) {
     const [first] = orderedTags(tagsOf(item), order);
     const key = first ? tagKey(first.name) : '';
@@ -390,7 +390,7 @@ export function groupByTag<T>(
       continue;
     }
     groups.set(key, {
-      name: first ? first.name : null,
+      tag: first ?? null,
       rank: tagOrderKey(first ? [first] : [], order),
       items: [item],
     });
@@ -407,5 +407,5 @@ export function groupByTag<T>(
             ? 1
             : 0,
     )
-    .map(({ name, items: grouped }) => ({ name, items: grouped }));
+    .map(({ tag, items: grouped }) => ({ tag, items: grouped }));
 }

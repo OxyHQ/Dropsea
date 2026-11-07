@@ -5,6 +5,8 @@
  */
 import {
   ContextMenuItem,
+  ContextMenuRadioGroup,
+  ContextMenuRadioItem,
   ContextMenuSeparator,
   ContextMenuSub,
   ContextMenuSubContent,
@@ -12,10 +14,12 @@ import {
   ContextMenuSwatchRow,
 } from '@oxy.so/bloom/context-menu';
 import { useTheme } from '@oxy.so/bloom/theme';
+import { GROUPINGS, groupingName, isGrouping } from '@/components/BrowserMenus';
 import type { ViewMode } from '@/components/BrowserProvider';
 import type { Commands } from '@/hooks/use-commands';
 import { useLocale } from '@/hooks/use-locale';
 import type { Item, Location } from '@/lib/items';
+import type { Grouping } from '@/lib/sorting';
 import { tagColorValue } from '@/lib/tags';
 
 export function ItemMenuRows({ item, commands }: { item: Item; commands: Commands }) {
@@ -146,11 +150,16 @@ export function BackgroundMenuRows({
   location,
   viewMode,
   onViewMode,
+  grouping,
+  onGrouping,
 }: {
   commands: Commands;
   location: Location;
   viewMode: ViewMode;
   onViewMode: (mode: ViewMode) => void;
+  /** What the items are grouped by, as View › Group By; null where they never are. */
+  grouping: Grouping | null;
+  onGrouping: (grouping: Grouping) => void;
 }) {
   const { strings } = useLocale();
   return (
@@ -181,6 +190,25 @@ export function BackgroundMenuRows({
       <ContextMenuItem onPress={() => onViewMode(viewMode === 'icons' ? 'list' : 'icons')}>
         {`${strings.view} ${viewMode === 'icons' ? strings.asList : strings.asIcons}`}
       </ContextMenuItem>
+      {grouping !== null ? (
+        <ContextMenuSub>
+          <ContextMenuSubTrigger>{strings.groupBy}</ContextMenuSubTrigger>
+          <ContextMenuSubContent>
+            <ContextMenuRadioGroup
+              value={grouping}
+              onValueChange={(next) => {
+                if (isGrouping(next)) onGrouping(next);
+              }}
+            >
+              {GROUPINGS.map((choice) => (
+                <ContextMenuRadioItem key={choice} value={choice}>
+                  {groupingName(choice, strings, location.kind === 'trash')}
+                </ContextMenuRadioItem>
+              ))}
+            </ContextMenuRadioGroup>
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+      ) : null}
       <ContextMenuItem disabled={!commands.selectAll.isEnabled} onPress={commands.selectAll.run}>
         {strings.menus.selectAll}
       </ContextMenuItem>

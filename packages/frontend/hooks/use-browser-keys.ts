@@ -4,6 +4,7 @@ import { useRef } from 'react';
 import type { ViewMode } from '@/components/BrowserProvider';
 import type { Commands } from '@/hooks/use-commands';
 import type { Item } from '@/lib/items';
+import { rowStep } from '@/lib/items-layout';
 import {
   focusEnd,
   moveFocus,
@@ -25,7 +26,7 @@ export interface ChooserKeys {
 
 /**
  * The window's own keys, after the menus' shortcuts (ADR 0021): the arrows
- * (across and down a grid, down a list; Shift extends), Home and End, Return
+ * (across and down a grid, down a list, from group to group; Shift extends), Home and End, Return
  * to rename, Space for a preview, Escape to close it or cancel a rename, and a
  * name's first letters to select it (type-select). In the file chooser,
  * Return is the panel's button and Escape cancels it.
@@ -34,6 +35,7 @@ export function useBrowserKeys({
   isEnabled,
   viewMode,
   getColumns,
+  groupSizes,
   shown,
   onSelectionChange,
   commands,
@@ -47,6 +49,8 @@ export function useBrowserKeys({
   viewMode: ViewMode;
   /** The grid's columns now, read as a key moves down or up it. */
   getColumns: () => number;
+  /** The groups `shown` runs in (View › Group By), by how many each has; one, ungrouped. */
+  groupSizes: readonly number[];
   shown: readonly Item[];
   onSelectionChange: (change: (selection: Selection) => Selection) => void;
   commands: Commands;
@@ -65,6 +69,16 @@ export function useBrowserKeys({
       onSelectionChange((selection) => moveFocus(selection, keys, by, event.shiftKey));
       return true;
     };
+    // Up or down a row, into the next group's first row or the previous group's last, as Finder.
+    const stepRow = (direction: 1 | -1) => {
+      const columns = viewMode === 'list' ? 1 : getColumns();
+      onSelectionChange((selection) => {
+        const at = selection.focus ? keys.indexOf(selection.focus) : -1;
+        const by = at < 0 ? direction : rowStep(groupSizes, columns, at, direction) - at;
+        return moveFocus(selection, keys, by, event.shiftKey);
+      });
+      return true;
+    };
     switch (event.key) {
       case 'ArrowDown':
         if (isCommand) {
@@ -72,10 +86,10 @@ export function useBrowserKeys({
           else commands.open.run();
           return true;
         }
-        return step(viewMode === 'list' ? 1 : getColumns());
+        return stepRow(1);
       case 'ArrowUp':
         if (isCommand) return false;
-        return step(viewMode === 'list' ? -1 : -getColumns());
+        return stepRow(-1);
       case 'ArrowRight':
         return viewMode === 'icons' ? step(1) : false;
       case 'ArrowLeft':

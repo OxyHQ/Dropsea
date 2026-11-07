@@ -163,6 +163,14 @@ const en = {
   groupBy: 'Group By',
   useGroups: 'Use Groups',
   noGroups: 'None',
+  /** The headers of the periods View › Group By › Date Modified puts items in, as Finder's. */
+  periods: {
+    today: 'Today',
+    yesterday: 'Yesterday',
+    'previous-7-days': 'Previous 7 Days',
+    'previous-30-days': 'Previous 30 Days',
+    undated: 'No Date',
+  },
   untitledFolder: 'untitled folder',
   untitledAlbum: 'Untitled Album',
   menus: {
@@ -454,6 +462,13 @@ const es: Strings = {
   groupBy: 'Agrupar por',
   useGroups: 'Usar grupos',
   noGroups: 'Ninguno',
+  periods: {
+    today: 'Hoy',
+    yesterday: 'Ayer',
+    'previous-7-days': '7 días anteriores',
+    'previous-30-days': '30 días anteriores',
+    undated: 'Sin fecha',
+  },
   untitledFolder: 'carpeta sin título',
   untitledAlbum: 'Álbum sin título',
   menus: {

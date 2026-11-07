@@ -26,7 +26,8 @@ import type { Commands } from '@/hooks/use-commands';
 import { useLocale } from '@/hooks/use-locale';
 import type { Location } from '@/lib/items';
 import type { LocalPlace } from '@/lib/local-places';
-import type { SortColumn, SortOrder } from '@/lib/sorting';
+import type { Strings } from '@/lib/strings';
+import type { Grouping, SortColumn, SortOrder } from '@/lib/sorting';
 import { KEYBOARD_TAG_COUNT } from '@/lib/tags';
 
 const SORT_COLUMNS: readonly SortColumn[] = ['name', 'kind', 'date', 'size', 'tags'];
@@ -37,6 +38,26 @@ function isViewMode(value: string): value is ViewMode {
 
 function isSortColumn(value: string): value is SortColumn {
   return SORT_COLUMNS.some((column) => column === value);
+}
+
+/** View › Group By's choices, in Finder's order. */
+export const GROUPINGS: readonly Grouping[] = ['none', 'kind', 'date', 'tags'];
+
+export function isGrouping(value: string): value is Grouping {
+  return GROUPINGS.some((grouping) => grouping === value);
+}
+
+/** A grouping's name in the menus: its column's, the Trash's dates being when items went there. */
+export function groupingName(grouping: Grouping, strings: Strings, isInTrash: boolean): string {
+  switch (grouping) {
+    case 'none':
+      return strings.noGroups;
+    case 'date':
+      return isInTrash ? strings.columns.deleted : strings.columns.date;
+    case 'kind':
+    case 'tags':
+      return strings.columns[grouping];
+  }
 }
 
 const subscribeNowhere = () => () => undefined;
@@ -65,6 +86,8 @@ export function BrowserMenus({
   onViewMode,
   order,
   onSortColumn,
+  grouping,
+  onGrouping,
   isShowingHidden,
   onShowingHidden,
   isPreviewShown,
@@ -84,6 +107,9 @@ export function BrowserMenus({
   onViewMode: (mode: ViewMode) => void;
   order: SortOrder;
   onSortColumn: (column: SortColumn) => void;
+  /** What the items are grouped by; null where they never are (Photos and the albums). */
+  grouping: Grouping | null;
+  onGrouping: (grouping: Grouping) => void;
   isShowingHidden: boolean;
   onShowingHidden: (isShowing: boolean) => void;
   isPreviewShown: boolean;
@@ -357,6 +383,25 @@ export function BrowserMenus({
               </MenubarItem>
               <MenubarSeparator />
             </>
+          ) : null}
+          {grouping !== null ? (
+            <MenubarSub>
+              <MenubarSubTrigger>{strings.groupBy}</MenubarSubTrigger>
+              <MenubarSubContent>
+                <MenubarRadioGroup
+                  value={grouping}
+                  onValueChange={(next) => {
+                    if (isGrouping(next)) onGrouping(next);
+                  }}
+                >
+                  {GROUPINGS.map((choice) => (
+                    <MenubarRadioItem key={choice} value={choice}>
+                      {groupingName(choice, strings, isInTrash)}
+                    </MenubarRadioItem>
+                  ))}
+                </MenubarRadioGroup>
+              </MenubarSubContent>
+            </MenubarSub>
           ) : null}
           <MenubarSub>
             <MenubarSubTrigger>{strings.menus.sortBy}</MenubarSubTrigger>

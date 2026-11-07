@@ -60,7 +60,7 @@ import { type Item, itemKind, type LocalItem, type Location } from '@/lib/items'
 import type { ItemsLayout } from '@/lib/items-layout';
 import { isSameUri, parentUri, pathParts, placeOf, uriName } from '@/lib/local-places';
 import { isSelected, keepShown, type Selection, selectAll } from '@/lib/selection';
-import { sortBy, sortItems, visibleItems } from '@/lib/sorting';
+import { groupItems, sortBy, sortItems, visibleItems } from '@/lib/sorting';
 import { TAG_KEYWORD, tagStyleOf } from '@/lib/tags';
 
 /** A picture larger than this is not decoded for an icon: its kind's glyph is drawn instead. */
@@ -156,11 +156,21 @@ export function Browser({ listing }: { listing: Listing }) {
   const tagStyle = tagStyleOf(definitions);
   // A search finds `tag:Red` in English and in the person's language's own word.
   const tagKeywords = [...new Set([TAG_KEYWORD, strings.tags.keyword])];
-  const shown = sortItems(
+  const sorted = sortItems(
     visibleItems(items, search, browser.isShowingHidden, tagKeywords, tags),
     order,
     tags,
   );
+  // View › Group By: the sort applies within each group, and the items run group by group, so the
+  // selection's order, Shift's range and Select All follow the groups, as Finder's do. Dates fall
+  // in periods of days: the day's start is all of now they need.
+  const grouping = browser.groupingFor(location);
+  const groups = groupItems(sorted, grouping ?? 'none', {
+    tags,
+    now: new Date().setHours(0, 0, 0, 0),
+    kindName: (kind) => strings.kinds[kind],
+  });
+  const shown = groups ? groups.flatMap((group) => group.items) : sorted;
   const shownKeys = shown.map((item) => item.key);
   // The file chooser selects what the request can take, and the folders it goes into.
   const selectable = chooser ? shown.filter((item) => isSelectable(item, chooser.request)) : shown;
@@ -345,6 +355,10 @@ export function Browser({ listing }: { listing: Listing }) {
       infoKeys === null,
     viewMode,
     getColumns: () => columns.current,
+    // The rows the arrows go down: each group's items the keys can select.
+    groupSizes: groups
+      ? groups.map((group) => group.items.filter((item) => !dimmedKeys.has(item.key)).length)
+      : [selectable.length],
     shown: selectable,
     onSelectionChange: handleSelectionChange,
     commands,
@@ -458,6 +472,7 @@ export function Browser({ listing }: { listing: Listing }) {
               content: (
                 <ItemsView
                   items={shown}
+                  groups={groups}
                   mode={viewMode}
                   layout={listing.layout}
                   label={listing.title}
@@ -521,6 +536,8 @@ export function Browser({ listing }: { listing: Listing }) {
                               location={location}
                               viewMode={viewMode}
                               onViewMode={(mode) => browser.setViewMode(location, mode)}
+                              grouping={grouping}
+                              onGrouping={browser.setGrouping}
                             />
                           ),
                         }
@@ -605,6 +622,8 @@ export function Browser({ listing }: { listing: Listing }) {
       onSortColumn={(column) =>
         browser.setOrder(location, order.column === column ? order : sortBy(order, column))
       }
+      grouping={grouping}
+      onGrouping={browser.setGrouping}
       isShowingHidden={browser.isShowingHidden}
       onShowingHidden={browser.setShowingHidden}
       isPreviewShown={browser.isPreviewShown}
