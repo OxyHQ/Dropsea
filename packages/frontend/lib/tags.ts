@@ -362,3 +362,50 @@ export function orderedTags(
     .sort((first, second) => first.place - second.place)
     .map(({ tag }) => tag);
 }
+
+/** A group of items by tag: its tag's name (null for the items with none) and its items. */
+export interface TagGroup<T> {
+  name: string | null;
+  items: T[];
+}
+
+/**
+ * Items grouped by tag, as Finder's View › Group By › Tags: each item under its
+ * first tag in the person's order (a tag of nobody's list after theirs, by
+ * name), the groups in that order, the untagged last; within a group, the
+ * items keep the order they came in (the window's sort).
+ */
+export function groupByTag<T>(
+  items: readonly T[],
+  tagsOf: (item: T) => readonly ItemTag[],
+  order: ReadonlyMap<string, number>,
+): TagGroup<T>[] {
+  const groups = new Map<string, { name: string | null; rank: [number, string]; items: T[] }>();
+  for (const item of items) {
+    const [first] = orderedTags(tagsOf(item), order);
+    const key = first ? tagKey(first.name) : '';
+    const known = groups.get(key);
+    if (known) {
+      known.items.push(item);
+      continue;
+    }
+    groups.set(key, {
+      name: first ? first.name : null,
+      rank: tagOrderKey(first ? [first] : [], order),
+      items: [item],
+    });
+  }
+  return [...groups.values()]
+    .sort((first, second) =>
+      first.rank[0] !== second.rank[0]
+        ? first.rank[0] < second.rank[0]
+          ? -1
+          : 1
+        : first.rank[1] < second.rank[1]
+          ? -1
+          : first.rank[1] > second.rank[1]
+            ? 1
+            : 0,
+    )
+    .map(({ name, items: grouped }) => ({ name, items: grouped }));
+}

@@ -5,6 +5,7 @@ import {
   changedTags,
   commonTags,
   defaultTagDefinitions,
+  groupByTag,
   type ItemTag,
   movedDefinition,
   orderedTags,
@@ -195,6 +196,26 @@ describe('a search', () => {
       'budget.pdf',
       'both.txt',
       'plain.txt',
+    ]);
+  });
+});
+
+describe('grouping by tag', () => {
+  test('puts each item under its first tag in the person’s order, the untagged last', () => {
+    const order = tagOrder(defaultTagDefinitions(COLORS));
+    const tagsOf = (name: string): ItemTag[] =>
+      ({
+        a: [tag('Work'), tag('Blue')],
+        b: [tag('red')],
+        c: [],
+        d: [tag('Alpha')],
+        e: [tag('Red'), tag('Work')],
+      })[name] ?? [];
+    expect(groupByTag(['a', 'b', 'c', 'd', 'e'], tagsOf, order)).toEqual([
+      { name: 'red', items: ['b', 'e'] },
+      { name: 'Blue', items: ['a'] },
+      { name: 'Alpha', items: ['d'] },
+      { name: null, items: ['c'] },
     ]);
   });
 });
