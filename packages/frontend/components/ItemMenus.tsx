@@ -48,6 +48,11 @@ export function ItemMenuRows({ item, commands }: { item: Item; commands: Command
         <ContextMenuItem onPress={commands.preview.run}>{strings.menus.preview}</ContextMenuItem>
       ) : null}
       <ContextMenuItem onPress={commands.getInfo.run}>{strings.getInfo}</ContextMenuItem>
+      {commands.browseVersions.isEnabled ? (
+        <ContextMenuItem onPress={commands.browseVersions.run}>
+          {strings.backups.browseVersions}
+        </ContextMenuItem>
+      ) : null}
       <ContextMenuSeparator />
       {commands.rename.isEnabled ? (
         <ContextMenuItem onPress={commands.rename.run}>{strings.menus.rename}</ContextMenuItem>
@@ -175,6 +180,11 @@ export function BackgroundMenuRows({
       {location.kind === 'cloud' && commands.uploadPicked.isEnabled ? (
         <ContextMenuItem onPress={commands.uploadPicked.run}>
           {strings.menus.uploadFiles}
+        </ContextMenuItem>
+      ) : null}
+      {commands.browseBackups.isEnabled ? (
+        <ContextMenuItem onPress={commands.browseBackups.run}>
+          {strings.backups.browseBackups}
         </ContextMenuItem>
       ) : null}
       {location.kind === 'trash' ? (

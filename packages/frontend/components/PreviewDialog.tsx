@@ -18,7 +18,8 @@ import { oxyServices } from '@/lib/oxy';
 const TEXT_PREVIEW_CHARACTERS = 64 * 1024;
 const PICTURE_SIZE = 420;
 
-function PictureOrText({ item }: { item: Item }) {
+/** A picture as itself, a text as its words; nothing for another kind. */
+export function PictureOrText({ item }: { item: Item }) {
   const { strings } = useLocale();
   const { userId } = useViewer();
   const kind = itemKind(item);

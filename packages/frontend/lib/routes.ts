@@ -4,7 +4,8 @@
  * device, by its URI, and `&select=…` an item in it to select, as a reveal:
  * `dropsea://files?uri=…&select=…` is how OxyOS's Spotlight shows a file in
  * Dropsea), `/cloud`, `/photos`, `/albums`, `/albums/[id]`, `/trash` and
- * `/tags/[name]` (every item with a tag).
+ * `/tags/[name]` (every item with a tag). And `/backups?uri=…`, a folder as it was in the person's
+ * backups (`dropsea://backups`, the home's: what the menu bar's backup item opens).
  */
 import type { Href } from 'expo-router';
 import type { Location } from '@/lib/items';
@@ -67,4 +68,17 @@ export function locationFromRoute(
     default:
       return null;
   }
+}
+
+/** The backups of a folder (`/backups?uri=…`), or of the home (`/backups`). */
+export function backupsHref(folderUri: string | null): Href {
+  return folderUri ? { pathname: '/backups', params: { uri: folderUri } } : '/backups';
+}
+
+/** The folder a backups route names: a local folder, or null for the home (no folder, or a bad link). */
+export function backupsFolderFromParams(
+  params: Record<string, string | string[] | undefined>,
+): string | null {
+  const uri = firstParam(params.uri);
+  return uri?.startsWith('file://') ? uri : null;
 }
