@@ -7,6 +7,7 @@ import { canTag, type TagChange, useTagActions } from '@/hooks/use-tag-actions';
 import { useTransfers } from '@/hooks/use-transfers';
 import { useViewer } from '@/hooks/use-viewer';
 import type { Selection } from '@/lib/selection';
+import { canBrowseBackups, canBrowseVersions } from '@/lib/backups';
 import { dropAction, dropFolderFor } from '@/lib/drop';
 import {
   type AlbumPhoto,
@@ -59,6 +60,10 @@ export interface CommandContext {
   editTags: (items: readonly Item[]) => void;
   /** Opens Get Info for items. */
   getInfo: (items: readonly Item[]) => void;
+  /** Opens an item's versions in the person's backups; null where there are none to browse. */
+  browseVersions: ((item: LocalItem) => void) | null;
+  /** Shows a folder as it was in the person's backups; null where there are none to browse. */
+  browseBackups: ((folderUri: string) => void) | null;
 }
 
 function isLocal(item: Item): item is LocalItem {
@@ -129,6 +134,8 @@ export function useCommands(context: CommandContext) {
     tagsOf,
     editTags,
     getInfo,
+    browseVersions,
+    browseBackups,
   } = context;
   const fileActions = useFileActions();
   const fileDrops = useFileDrops(places);
@@ -270,6 +277,27 @@ export function useCommands(context: CommandContext) {
     editTags: command(isAllTaggable, () => editTags(selected)),
     /** File › Get Info: the selection's facts and tags. */
     getInfo: command(selected.length > 0, () => getInfo(selected)),
+    /** Whether the person's backups can be browsed here at all: their rows show only then. */
+    hasBackups: browseVersions !== null || browseBackups !== null,
+    /** File › Browse Versions…: the one item selected, as the person's backups held it. */
+    browseVersions: command(
+      browseVersions !== null &&
+        selected.length === 1 &&
+        first !== null &&
+        canBrowseVersions(first, places),
+      () => {
+        if (first && isLocal(first)) browseVersions?.(first);
+      },
+    ),
+    /** File › Browse Backups: the folder shown, as it was. */
+    browseBackups: command(
+      browseBackups !== null &&
+        location.kind === 'folder' &&
+        canBrowseBackups(location.uri, places),
+      () => {
+        if (location.kind === 'folder') browseBackups?.(location.uri);
+      },
+    ),
     /**
      * The person's favourite tags, as the context menu's dots and the keyboard offer them: each
      * on all the selection, on none or on some, and choosing it puts it on all or takes it off all.

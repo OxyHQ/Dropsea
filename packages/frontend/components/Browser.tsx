@@ -26,6 +26,7 @@ import { Text } from '@oxy.so/bloom/typography';
 import { useWindowWidthClass } from '@oxy.so/bloom/hooks';
 import { useWindow } from '@oxy.so/bloom/window';
 import type { Album } from '@dropsea/shared-types';
+import { router } from 'expo-router';
 import { type ReactNode, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { AlbumNameDialog } from '@/components/AlbumNameDialog';
@@ -41,9 +42,11 @@ import { SearchScopeBar } from '@/components/SearchScopeBar';
 import { SignInPanel } from '@/components/SignInPanel';
 import { StatusBar } from '@/components/StatusBar';
 import { TagsDialog } from '@/components/TagsDialog';
+import { VersionsDialog } from '@/components/VersionsDialog';
 import { Toolbar } from '@/components/Toolbar';
 import { useAlbums } from '@/hooks/use-albums';
 import { type AssetUrlRequest, assetUrlKey, useAssetUrls } from '@/hooks/use-asset-urls';
+import { useBackups } from '@/hooks/use-backups';
 import { useBrowserKeys } from '@/hooks/use-browser-keys';
 import { useItemTags } from '@/hooks/use-item-tags';
 import { canTag } from '@/hooks/use-tag-actions';
@@ -61,12 +64,14 @@ import {
   saveStep,
 } from '@/lib/chooser';
 import { answerCancelled, answerChosen } from '@/lib/chooser-answer';
+import { refreshFolder } from '@/lib/folder-store';
 import { selectionOnArrival } from '@/lib/history';
 import { previewOnPlatform } from '@/lib/local-files';
 import { type Item, itemKind, type LocalItem, type Location } from '@/lib/items';
 import type { ItemsLayout } from '@/lib/items-layout';
 import { isSameUri, parentUri, pathParts, uriName } from '@/lib/local-places';
 import { useOperations } from '@/lib/operations';
+import { backupsHref, hrefFor } from '@/lib/routes';
 import { platformSearchQuery, type SearchScope, searchResults, tokenLabel } from '@/lib/search';
 import { isSelected, keepShown, type Selection, selectAll } from '@/lib/selection';
 import { groupItems, sortBy, sortItems, visibleItems } from '@/lib/sorting';
@@ -159,6 +164,11 @@ export function Browser({ listing }: { listing: Listing }) {
   // The items a Tags… panel or Get Info is open for, by key: they show their tags as they change.
   const [tagsPanelKeys, setTagsPanelKeys] = useState<readonly string[] | null>(null);
   const [infoKeys, setInfoKeys] = useState<readonly string[] | null>(null);
+  // The item whose versions are open (Browse Versions…).
+  const [versionsOf, setVersionsOf] = useState<LocalItem | null>(null);
+  // The person's backups, where the platform makes them and keeps some: never in the chooser.
+  const backupsInfo = useBackups();
+  const backups = chooser ? null : backupsInfo.backups;
   // The save panel's file of the name typed, asked about before it is replaced.
   const [replacing, setReplacing] = useState<{ uri: string; name: string } | null>(null);
   // The grid's columns, for the arrows: read as a key is pressed, never drawn.
@@ -298,7 +308,18 @@ export function Browser({ listing }: { listing: Listing }) {
     tagsOf: tags.tagsOf,
     editTags: (chosen) => setTagsPanelKeys(chosen.map((item) => item.key)),
     getInfo: (chosen) => setInfoKeys(chosen.map((item) => item.key)),
+    browseVersions: backups ? setVersionsOf : null,
+    browseBackups: backups ? (uri) => router.push(backupsHref(uri)) : null,
   });
+  // A version restored: the window shows it selected where it now is.
+  const showRestored = (uri: string) => {
+    setVersionsOf(null);
+    const folder = parentUri(uri);
+    refreshFolder(folder);
+    const target = hrefFor({ kind: 'folder', uri: folder, select: uri });
+    if (folderUri !== null && isSameUri(folder, folderUri)) router.replace(target);
+    else router.push(target);
+  };
   const itemsWithKeys = (keys: readonly string[] | null) =>
     keys ? items.filter((item) => keys.includes(item.key)) : [];
   const tagsPanelItems = itemsWithKeys(tagsPanelKeys);
@@ -886,6 +907,15 @@ export function Browser({ listing }: { listing: Listing }) {
           originOf={originOf}
           onChange={(change) => commands.changeTags(infoItems, change)}
           onClose={() => setInfoKeys(null)}
+        />
+      ) : null}
+      {versionsOf && backups ? (
+        <VersionsDialog
+          backups={backups}
+          state={backupsInfo.state}
+          item={versionsOf}
+          onRestored={showRestored}
+          onClose={() => setVersionsOf(null)}
         />
       ) : null}
       <PreviewDialog

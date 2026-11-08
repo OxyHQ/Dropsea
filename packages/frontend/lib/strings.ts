@@ -335,6 +335,54 @@ const en = {
     stopping: 'Stopping…',
     stop: 'Stop',
   },
+  backups: {
+    browseVersions: 'Browse Versions…',
+    browseBackups: 'Browse Backups',
+    versionsTitle: (name: string) => `Versions of “${name}”`,
+    versions: 'Versions',
+    looking: 'Looking through your backups…',
+    noVersions: (name: string) => `No backup holds “${name}” yet.`,
+    onDestination: (size: string | null, destination: string) =>
+      size ? `${size} · ${destination}` : destination,
+    unknownDestination: 'Backup',
+    restore: 'Restore',
+    restoreTo: 'Restore To…',
+    done: 'Done',
+    stop: 'Stop',
+    clashTitle: (name: string) =>
+      `An item named “${name}” already exists in this location. Do you want to keep both, or replace it with the one from the backup?`,
+    restoring: (name: string, percent: string | null) =>
+      percent ? `Restoring “${name}”… ${percent}` : `Restoring “${name}”…`,
+    restored: (name: string) => `Restored “${name}”`,
+    restoredItems: (count: number) => (count === 1 ? 'Restored 1 item' : `Restored ${count} items`),
+    skipped: (count: number) =>
+      count === 1
+        ? 'One item was left out: a link leading outside what was restored, or a device.'
+        : `${count} items were left out: links leading outside what was restored, or devices.`,
+    couldNotRestore: (name: string) => `“${name}” could not be restored.`,
+    couldNotRead: 'Dropsea could not read your backups.',
+    problems: {
+      disk: (name: string) => `The backup disk “${name}” isn’t connected.`,
+      share: (name: string) => `“${name}” can’t be reached right now.`,
+      'not-permitted': 'Dropsea isn’t allowed to read your backups.',
+      'not-found': 'The backup no longer holds this item.',
+      refused: 'Dropsea can’t restore an item there.',
+      denied: 'You do not have permission to restore an item there.',
+      io: 'The disk could not do that.',
+    },
+    backupsTitle: (folder: string) => `Backups of “${folder}”`,
+    timeline: 'Backups',
+    noBackups: (folder: string) => `No backup holds “${folder}” yet.`,
+    notInBackup: 'This folder isn’t in this backup.',
+    emptyFolder: 'This folder was empty.',
+    notHereNow: 'Not here now',
+    enclosing: 'Enclosing Folder',
+    open: (name: string) => `Open “${name}”`,
+    selectItem: (name: string) => `Select “${name}”`,
+    preview: 'Preview',
+    noPreview: 'No preview for this version.',
+    folderVersion: 'The folder as it was',
+  },
   clash: {
     title: (name: string, relocation: 'copy' | 'move') =>
       `An item named “${name}” already exists in this location. Do you want to replace it with the one you’re ${relocation === 'copy' ? 'copying' : 'moving'}?`,
@@ -699,6 +747,54 @@ const es: Strings = {
       `${relocation === 'copy' ? 'Copiando' : 'Trasladando'} ${count === 1 ? '1 elemento' : `${count} elementos`} a «${folder}»`,
     stopping: 'Deteniendo…',
     stop: 'Detener',
+  },
+  backups: {
+    browseVersions: 'Explorar versiones…',
+    browseBackups: 'Explorar copias de seguridad',
+    versionsTitle: (name) => `Versiones de «${name}»`,
+    versions: 'Versiones',
+    looking: 'Buscando en tus copias de seguridad…',
+    noVersions: (name) => `Ninguna copia de seguridad contiene «${name}» todavía.`,
+    onDestination: (size, destination) => (size ? `${size} · ${destination}` : destination),
+    unknownDestination: 'Copia de seguridad',
+    restore: 'Restaurar',
+    restoreTo: 'Restaurar en…',
+    done: 'Listo',
+    stop: 'Detener',
+    clashTitle: (name) =>
+      `Ya hay un elemento llamado «${name}» en esta ubicación. ¿Quieres conservar ambos o reemplazarlo por el de la copia de seguridad?`,
+    restoring: (name, percent) =>
+      percent ? `Restaurando «${name}»… ${percent}` : `Restaurando «${name}»…`,
+    restored: (name) => `Se ha restaurado «${name}»`,
+    restoredItems: (count) =>
+      count === 1 ? 'Se ha restaurado 1 elemento' : `Se han restaurado ${count} elementos`,
+    skipped: (count) =>
+      count === 1
+        ? 'Se ha omitido un elemento: un enlace que lleva fuera de lo restaurado, o un dispositivo.'
+        : `Se han omitido ${count} elementos: enlaces que llevan fuera de lo restaurado, o dispositivos.`,
+    couldNotRestore: (name) => `No se ha podido restaurar «${name}».`,
+    couldNotRead: 'Dropsea no ha podido leer tus copias de seguridad.',
+    problems: {
+      disk: (name) => `El disco de copias de seguridad «${name}» no está conectado.`,
+      share: (name) => `No se puede acceder a «${name}» en este momento.`,
+      'not-permitted': 'Dropsea no tiene permiso para leer tus copias de seguridad.',
+      'not-found': 'La copia de seguridad ya no contiene este elemento.',
+      refused: 'Dropsea no puede restaurar un elemento ahí.',
+      denied: 'No tienes permiso para restaurar un elemento ahí.',
+      io: 'El disco no ha podido hacerlo.',
+    },
+    backupsTitle: (folder) => `Copias de seguridad de «${folder}»`,
+    timeline: 'Copias de seguridad',
+    noBackups: (folder) => `Ninguna copia de seguridad contiene «${folder}» todavía.`,
+    notInBackup: 'Esta carpeta no está en esta copia de seguridad.',
+    emptyFolder: 'Esta carpeta estaba vacía.',
+    notHereNow: 'Ya no está aquí',
+    enclosing: 'Carpeta contenedora',
+    open: (name) => `Abrir «${name}»`,
+    selectItem: (name) => `Seleccionar «${name}»`,
+    preview: 'Vista previa',
+    noPreview: 'No hay vista previa de esta versión.',
+    folderVersion: 'La carpeta tal como estaba',
   },
   clash: {
     title: (name, relocation) =>

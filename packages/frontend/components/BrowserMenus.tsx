@@ -172,6 +172,22 @@ export function BrowserMenus({
           >
             {strings.getInfo}
           </MenubarItem>
+          {commands.hasBackups ? (
+            <>
+              <MenubarItem
+                disabled={!commands.browseVersions.isEnabled}
+                onPress={commands.browseVersions.run}
+              >
+                {strings.backups.browseVersions}
+              </MenubarItem>
+              <MenubarItem
+                disabled={!commands.browseBackups.isEnabled}
+                onPress={commands.browseBackups.run}
+              >
+                {strings.backups.browseBackups}
+              </MenubarItem>
+            </>
+          ) : null}
           <MenubarSeparator />
           {/* Finder's tags in the File menu: its first seven favourites on Control-1 to Control-7
               and Control-0 for none, here Mod+Alt (Ctrl is the applications' ⌘ on OxyOS, and
