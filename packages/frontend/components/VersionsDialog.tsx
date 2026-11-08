@@ -10,7 +10,8 @@ import type {
   PlatformFileBackups,
   PlatformFileVersion,
 } from '@oxy.so/bloom/platform-surface';
-import { Dialog, type DialogAction } from '@oxy.so/bloom/dialog';
+import { Button } from '@oxy.so/bloom/button';
+import { Dialog } from '@oxy.so/bloom/dialog';
 import { toast } from '@oxy.so/bloom/toast';
 import { Text } from '@oxy.so/bloom/typography';
 import { useQuery } from '@tanstack/react-query';
@@ -168,35 +169,6 @@ export function VersionsDialog({
     });
   };
 
-  const actions: DialogAction[] = [
-    {
-      label: strings.backups.done,
-      color: 'cancel',
-      disabled: isBusy,
-      testID: 'versions-done',
-    },
-    {
-      label: strings.backups.restoreTo,
-      color: 'cancel',
-      disabled: chosen === null || isBusy,
-      shouldCloseOnPress: false,
-      onPress: () =>
-        run(async () => {
-          const folder = await pickFolder();
-          if (folder) await restoreInto(folder);
-        }),
-      testID: 'versions-restore-to',
-    },
-    {
-      label: strings.backups.restore,
-      disabled: chosen === null || isBusy,
-      shouldCloseOnPress: false,
-      initialFocus: true,
-      onPress: () => run(() => restoreInto(null)),
-      testID: 'versions-restore',
-    },
-  ];
-
   const now = new Date().setHours(0, 0, 0, 0);
   return (
     <>
@@ -206,8 +178,7 @@ export function VersionsDialog({
           if (!isBusy) onClose();
         }}
         title={strings.backups.versionsTitle(item.name)}
-        width={760}
-        actions={actions}
+        maxWidth={760}
         testID="versions"
       >
         <View className="h-96 flex-row gap-4 pt-2">
@@ -272,9 +243,49 @@ export function VersionsDialog({
             ) : null}
           </View>
         </View>
-        {restoring.progress ? (
-          <RestoreProgressRow progress={restoring.progress} onStop={restoring.stop} />
-        ) : null}
+        {/* A Mac's sheet: Restore To… at its leading edge (or the restore's progress while one
+            runs), Done and the default Restore at its trailing edge. */}
+        <View className="flex-row items-center gap-2 pt-4">
+          {restoring.progress ? (
+            <View className="flex-1">
+              <RestoreProgressRow progress={restoring.progress} onStop={restoring.stop} />
+            </View>
+          ) : (
+            <>
+              <Button
+                appearance="outline"
+                tone="neutral"
+                disabled={chosen === null || isBusy}
+                onPress={() =>
+                  run(async () => {
+                    const folder = await pickFolder();
+                    if (folder) await restoreInto(folder);
+                  })
+                }
+                testID="versions-restore-to"
+              >
+                {strings.backups.restoreTo}
+              </Button>
+              <View className="flex-1" />
+            </>
+          )}
+          <Button
+            appearance="outline"
+            tone="neutral"
+            disabled={isBusy}
+            onPress={onClose}
+            testID="versions-done"
+          >
+            {strings.backups.done}
+          </Button>
+          <Button
+            disabled={chosen === null || isBusy}
+            onPress={() => run(() => restoreInto(null))}
+            testID="versions-restore"
+          >
+            {strings.backups.restore}
+          </Button>
+        </View>
       </Dialog>
       <RestoreAlert question={restoring.question} onAnswer={restoring.answer} />
     </>
