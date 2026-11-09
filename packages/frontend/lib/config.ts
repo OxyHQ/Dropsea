@@ -3,8 +3,12 @@
 /** Oxy's API. */
 export const OXY_API_URL = process.env.EXPO_PUBLIC_OXY_API_URL ?? 'https://api.oxy.so';
 
-/** Dropsea's own backend (packages/backend): albums. */
-export const DROPSEA_API_URL = process.env.EXPO_PUBLIC_DROPSEA_API_URL ?? 'https://api.dropsea.net';
+/**
+ * Dropsea's own backend (packages/backend): albums, and the tags of Oxy Files'
+ * assets. None unless the build names one: a build without it never calls a
+ * backend, and what needs one says it is not available yet.
+ */
+export const DROPSEA_API_URL = process.env.EXPO_PUBLIC_DROPSEA_API_URL || null;
 
 /** Dropsea's Oxy client id (its ApplicationCredential publicKey). */
 export const OXY_CLIENT_ID = process.env.EXPO_PUBLIC_OXY_CLIENT_ID ?? '';

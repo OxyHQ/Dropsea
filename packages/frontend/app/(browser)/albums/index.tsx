@@ -3,6 +3,7 @@ import { Browser } from '@/components/Browser';
 import { useAlbums } from '@/hooks/use-albums';
 import { useLocale } from '@/hooks/use-locale';
 import { useViewer } from '@/hooks/use-viewer';
+import { dropseaBackend, HAS_DROPSEA_BACKEND } from '@/lib/dropsea-api';
 import { albumEntry } from '@/lib/items';
 
 /** The person's albums, each opened as a folder is. */
@@ -20,14 +21,19 @@ export default function AlbumsScreen() {
           ? isResolving
             ? 'loading'
             : 'signed-out'
-          : albums.isPending
-            ? 'loading'
-            : albums.isError
-              ? 'error'
-              : 'ready',
+          : !HAS_DROPSEA_BACKEND
+            ? 'unavailable'
+            : albums.isPending
+              ? 'loading'
+              : albums.isError
+                ? 'error'
+                : 'ready',
         layout: 'files',
         empty: { icon: RiGalleryLine, title: strings.empty.albums, hint: strings.empty.albumsHint },
-        onRetry: () => albums.refetch(),
+        onRetry: () => {
+          dropseaBackend.retryNow();
+          albums.refetch();
+        },
       }}
     />
   );

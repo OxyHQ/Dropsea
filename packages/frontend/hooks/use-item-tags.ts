@@ -13,7 +13,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { useTagDefinitions } from '@/hooks/use-tag-definitions';
 import { useViewer } from '@/hooks/use-viewer';
-import { listFileTagNames, lookupFileTags } from '@/lib/dropsea-api';
+import { HAS_DROPSEA_BACKEND, listFileTagNames, lookupFileTags } from '@/lib/dropsea-api';
 import { assetIdOf, type Item } from '@/lib/items';
 import { normalizeUri } from '@/lib/local-places';
 import type { TagLookup } from '@/lib/sorting';
@@ -59,7 +59,7 @@ export function useLocalTagsFollowed(): void {
 async function lookupAll(assetIds: readonly string[]): Promise<Map<string, ItemTag[]>> {
   const found = new Map<string, ItemTag[]>();
   for (let start = 0; start < assetIds.length; start += LOOKUP_BATCH) {
-    const answer = await lookupFileTags(assetIds.slice(start, start + LOOKUP_BATCH));
+    const answer = await lookupFileTags(assetIds.slice(start, start + LOOKUP_BATCH), 'background');
     for (const [assetId, names] of Object.entries(answer)) {
       found.set(
         assetId,
@@ -112,7 +112,7 @@ export function useItemTags(items: readonly Item[], folderUri: string | null): T
   const cloud = useQuery({
     queryKey: [...cloudTagsKey(userId), ...assetIds],
     queryFn: () => lookupAll(assetIds),
-    enabled: isSignedIn && assetIds.length > 0,
+    enabled: isSignedIn && HAS_DROPSEA_BACKEND && assetIds.length > 0,
   });
 
   const order = tagOrder(definitions);
@@ -144,7 +144,7 @@ export function useFoundTagNames(isEnabled: boolean): string[] {
   const cloud = useQuery({
     queryKey: [...cloudTagsKey(userId), 'names'],
     queryFn: async () => (await listFileTagNames()).map((found) => found.name),
-    enabled: isEnabled && isSignedIn,
+    enabled: isEnabled && isSignedIn && HAS_DROPSEA_BACKEND,
   });
   return [...local, ...(cloud.data ?? [])];
 }

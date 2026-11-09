@@ -9,7 +9,7 @@ import { usePlatformFiles } from '@oxy.so/bloom/platform-surface';
 import { useQuery } from '@tanstack/react-query';
 import { cloudTagsKey, LOCAL_TAGS_KEY } from '@/hooks/use-item-tags';
 import { useViewer } from '@/hooks/use-viewer';
-import { listTaggedAssets } from '@/lib/dropsea-api';
+import { dropseaBackend, HAS_DROPSEA_BACKEND, listTaggedAssets } from '@/lib/dropsea-api';
 import { cloudItem, type Item, localItem } from '@/lib/items';
 import { oxyServices } from '@/lib/oxy';
 import { tagKey } from '@/lib/tags';
@@ -57,6 +57,7 @@ export function useTaggedItems(name: string): {
   const tags = usePlatformFiles()?.tags;
   const { userId, isSignedIn } = useViewer();
   const key = tagKey(name);
+  const hasCloud = isSignedIn && HAS_DROPSEA_BACKEND;
   const local = useQuery({
     queryKey: [...LOCAL_TAGS_KEY, 'tagged', key],
     queryFn: async () =>
@@ -74,9 +75,9 @@ export function useTaggedItems(name: string): {
   const cloud = useQuery({
     queryKey: [...cloudTagsKey(userId), 'tagged', key],
     queryFn: async () => (await readAssets(await allTaggedAssets(name))).map(cloudItem),
-    enabled: isSignedIn,
+    enabled: hasCloud,
   });
-  const parts = [...(tags ? [local] : []), ...(isSignedIn ? [cloud] : [])];
+  const parts = [...(tags ? [local] : []), ...(hasCloud ? [cloud] : [])];
   const items = [...(local.data ?? []), ...(cloud.data ?? [])];
   const status = parts.some((part) => part.isPending)
     ? 'loading'
@@ -91,6 +92,7 @@ export function useTaggedItems(name: string): {
     items,
     status,
     retry: () => {
+      dropseaBackend.retryNow();
       for (const part of parts) part.refetch();
     },
   };

@@ -91,7 +91,8 @@ export interface Listing {
   location: Location;
   title: string;
   items: readonly Item[];
-  status: 'ready' | 'loading' | 'error' | 'signed-out';
+  /** `unavailable`: the place needs Dropsea's backend, which this build does not have. */
+  status: 'ready' | 'loading' | 'error' | 'signed-out' | 'unavailable';
   layout: ItemsLayout;
   empty: { icon: BloomIconComponent; title: string; hint?: string };
   /** The album the place is, when it is one. */
@@ -539,6 +540,15 @@ export function Browser({ listing }: { listing: Listing }) {
     ) : status === 'loading' ? (
       <View className="flex-1 items-center justify-center">
         <Loading />
+      </View>
+    ) : status === 'unavailable' ? (
+      <View className="flex-1 items-center justify-center">
+        <EmptyState
+          icon={listing.empty.icon}
+          title={strings.notAvailableYet.title}
+          description={strings.notAvailableYet.hint}
+          testID="not-available-yet"
+        />
       </View>
     ) : status === 'error' ? (
       <View className="flex-1 items-center justify-center">

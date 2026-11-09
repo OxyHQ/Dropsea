@@ -4,6 +4,7 @@ import { Browser } from '@/components/Browser';
 import { albumNamed, useAlbum, useAlbumItems, useAlbums } from '@/hooks/use-albums';
 import { useLocale } from '@/hooks/use-locale';
 import { useViewer } from '@/hooks/use-viewer';
+import { dropseaBackend, HAS_DROPSEA_BACKEND } from '@/lib/dropsea-api';
 import { formatDay } from '@/lib/format';
 import { albumPhoto } from '@/lib/items';
 
@@ -31,14 +32,19 @@ export default function AlbumScreen() {
           ? isResolving
             ? 'loading'
             : 'signed-out'
-          : photos.isPending
-            ? 'loading'
-            : photos.isError
-              ? 'error'
-              : 'ready',
+          : !HAS_DROPSEA_BACKEND
+            ? 'unavailable'
+            : photos.isPending
+              ? 'loading'
+              : photos.isError
+                ? 'error'
+                : 'ready',
         layout: 'photos',
         empty: { icon: RiGalleryLine, title: strings.empty.album, hint: strings.empty.albumHint },
-        onRetry: () => photos.refetch(),
+        onRetry: () => {
+          dropseaBackend.retryNow();
+          photos.refetch();
+        },
         onEndReached: () => {
           if (photos.hasNextPage && !photos.isFetchingNextPage) photos.fetchNextPage();
         },

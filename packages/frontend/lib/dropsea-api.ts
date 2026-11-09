@@ -1,7 +1,9 @@
 /**
  * Dropsea's backend (packages/backend), called with the person's Oxy session: a
  * linked client keeps its bearer token in step with that session and hands a
- * 401 back to it to refresh.
+ * 401 back to it to refresh. Every request goes through one link
+ * (`lib/backend-link`), which owns the retries: the client retries nothing
+ * itself, and React Query retries nothing of the backend's.
  */
 import type {
   AddAlbumItemsResponse,
@@ -21,69 +23,97 @@ import type {
   TaggedAssetsPage,
   UpdateAlbumRequest,
 } from '@dropsea/shared-types';
+import type { LinkedHttpClient } from '@oxy.so/core';
+import { type BackendIntent, BackendLink } from '@/lib/backend-link';
 import { DROPSEA_API_URL } from '@/lib/config';
 import { oxyServices } from '@/lib/oxy';
 
-const backend = oxyServices.createLinkedClient({ baseURL: DROPSEA_API_URL }).client;
+/** Dropsea's backend, or none in a build that names none. */
+export const dropseaBackend: BackendLink<LinkedHttpClient['client']> = new BackendLink(
+  DROPSEA_API_URL === null
+    ? null
+    : oxyServices.createLinkedClient({ baseURL: DROPSEA_API_URL, enableRetry: false }).client,
+);
+
+/** Whether this build has Dropsea's backend: without it, albums and Oxy Files' tags are not available yet. */
+export const HAS_DROPSEA_BACKEND = dropseaBackend.isConfigured;
 
 /** Photos per page of an album. */
 export const ALBUM_PAGE_SIZE = 120;
 
 export async function listAlbums(): Promise<Album[]> {
-  const response = await backend.get<{ albums: Album[] }>('/albums');
+  const response = await dropseaBackend.call('background', (backend) =>
+    backend.get<{ albums: Album[] }>('/albums'),
+  );
   return response.albums;
 }
 
 export async function getAlbum(albumId: string): Promise<Album> {
-  const response = await backend.get<{ album: Album }>(`/albums/${encodeURIComponent(albumId)}`);
+  const response = await dropseaBackend.call('background', (backend) =>
+    backend.get<{ album: Album }>(`/albums/${encodeURIComponent(albumId)}`),
+  );
   return response.album;
 }
 
 export async function createAlbum(request: CreateAlbumRequest): Promise<Album> {
-  const response = await backend.post<{ album: Album }>('/albums', request);
+  const response = await dropseaBackend.call('person', (backend) =>
+    backend.post<{ album: Album }>('/albums', request),
+  );
   return response.album;
 }
 
 export async function updateAlbum(albumId: string, request: UpdateAlbumRequest): Promise<Album> {
-  const response = await backend.patch<{ album: Album }>(
-    `/albums/${encodeURIComponent(albumId)}`,
-    request,
+  const response = await dropseaBackend.call('person', (backend) =>
+    backend.patch<{ album: Album }>(`/albums/${encodeURIComponent(albumId)}`, request),
   );
   return response.album;
 }
 
 export async function deleteAlbum(albumId: string): Promise<void> {
-  await backend.delete(`/albums/${encodeURIComponent(albumId)}`);
+  await dropseaBackend.call('person', (backend) =>
+    backend.delete(`/albums/${encodeURIComponent(albumId)}`),
+  );
 }
 
+/** A page of an album's photos: for the album shown (`background`), or for something the person does to it (`person`). */
 export async function listAlbumItems(
   albumId: string,
   cursor: string | null,
+  intent: BackendIntent,
 ): Promise<AlbumItemsPage> {
-  return backend.get<AlbumItemsPage>(`/albums/${encodeURIComponent(albumId)}/items`, {
-    params: { limit: ALBUM_PAGE_SIZE, ...(cursor ? { cursor } : {}) },
-  });
+  return dropseaBackend.call(intent, (backend) =>
+    backend.get<AlbumItemsPage>(`/albums/${encodeURIComponent(albumId)}/items`, {
+      params: { limit: ALBUM_PAGE_SIZE, ...(cursor ? { cursor } : {}) },
+    }),
+  );
 }
 
 export async function addAlbumItems(
   albumId: string,
   assetIds: readonly string[],
 ): Promise<AddAlbumItemsResponse> {
-  return backend.post<AddAlbumItemsResponse>(`/albums/${encodeURIComponent(albumId)}/items`, {
-    assetIds,
-  });
+  return dropseaBackend.call('person', (backend) =>
+    backend.post<AddAlbumItemsResponse>(`/albums/${encodeURIComponent(albumId)}/items`, {
+      assetIds,
+    }),
+  );
 }
 
 export async function removeAlbumItem(albumId: string, itemId: string): Promise<void> {
-  await backend.delete(
-    `/albums/${encodeURIComponent(albumId)}/items/${encodeURIComponent(itemId)}`,
+  await dropseaBackend.call('person', (backend) =>
+    backend.delete(`/albums/${encodeURIComponent(albumId)}/items/${encodeURIComponent(itemId)}`),
   );
 }
 
 /** The tags of each asset, in each one's order; an asset without tags is left out. */
-export async function lookupFileTags(assetIds: readonly string[]): Promise<FileTagsByAsset> {
+export async function lookupFileTags(
+  assetIds: readonly string[],
+  intent: BackendIntent,
+): Promise<FileTagsByAsset> {
   const request: LookupFileTagsRequest = { assetIds: [...assetIds] };
-  const response = await backend.post<FileTagsResponse>('/file-tags/lookup', request);
+  const response = await dropseaBackend.call(intent, (backend) =>
+    backend.post<FileTagsResponse>('/file-tags/lookup', request),
+  );
   return response.tags;
 }
 
@@ -92,14 +122,18 @@ export async function listTaggedAssets(
   name: string,
   cursor: string | null,
 ): Promise<TaggedAssetsPage> {
-  return backend.get<TaggedAssetsPage>('/file-tags', {
-    params: { name, ...(cursor ? { cursor } : {}) },
-  });
+  return dropseaBackend.call('background', (backend) =>
+    backend.get<TaggedAssetsPage>('/file-tags', {
+      params: { name, ...(cursor ? { cursor } : {}) },
+    }),
+  );
 }
 
 /** Every tag on the person's assets, and how many carry it. */
 export async function listFileTagNames(): Promise<FileTagName[]> {
-  const response = await backend.get<FileTagNamesResponse>('/file-tags/names');
+  const response = await dropseaBackend.call('background', (backend) =>
+    backend.get<FileTagNamesResponse>('/file-tags/names'),
+  );
   return response.names;
 }
 
@@ -114,24 +148,32 @@ export async function changeFileTags(
     add: [...add],
     remove: [...remove],
   };
-  const response = await backend.post<FileTagsResponse>('/file-tags/change', request);
+  const response = await dropseaBackend.call('person', (backend) =>
+    backend.post<FileTagsResponse>('/file-tags/change', request),
+  );
   return response.tags;
 }
 
 /** Renames a tag on every asset that has it. */
 export async function renameFileTag(from: string, to: string): Promise<void> {
   const request: RenameFileTagRequest = { from, to };
-  await backend.post<FileTagsCountResponse>('/file-tags/rename', request);
+  await dropseaBackend.call('person', (backend) =>
+    backend.post<FileTagsCountResponse>('/file-tags/rename', request),
+  );
 }
 
 /** Takes a tag off every asset that has it. */
 export async function removeFileTag(name: string): Promise<void> {
   const request: RemoveFileTagNameRequest = { name };
-  await backend.post<FileTagsCountResponse>('/file-tags/remove-name', request);
+  await dropseaBackend.call('person', (backend) =>
+    backend.post<FileTagsCountResponse>('/file-tags/remove-name', request),
+  );
 }
 
 /** Forgets the tags of assets deleted for good. */
 export async function forgetFileTags(assetIds: readonly string[]): Promise<void> {
   const request: ForgetFileTagsRequest = { assetIds: [...assetIds] };
-  await backend.post<FileTagsCountResponse>('/file-tags/forget', request);
+  await dropseaBackend.call('person', (backend) =>
+    backend.post<FileTagsCountResponse>('/file-tags/forget', request),
+  );
 }

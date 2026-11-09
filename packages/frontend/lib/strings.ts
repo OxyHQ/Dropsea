@@ -306,6 +306,10 @@ const en = {
   } satisfies Record<FileProblem, string>,
   placeStays: (name: string) => `“${name}” can’t be moved: the system keeps it where it is.`,
   couldNotLoad: 'Dropsea could not load this.',
+  notAvailableYet: {
+    title: 'Not Available Yet',
+    hint: 'This needs Dropsea’s online service, which is not available yet.',
+  },
   couldNotOpenFolder: 'Dropsea could not open this folder.',
   couldNotChange: 'Dropsea could not do that. Try again.',
   cloudProblem: (name: string) => `Oxy Files could not change “${name}”.`,
@@ -711,6 +715,10 @@ const es: Strings = {
   },
   placeStays: (name) => `«${name}» no se puede mover: el sistema lo mantiene donde está.`,
   couldNotLoad: 'Dropsea no ha podido cargar esto.',
+  notAvailableYet: {
+    title: 'Aún no disponible',
+    hint: 'Esto necesita el servicio en línea de Dropsea, que aún no está disponible.',
+  },
   couldNotOpenFolder: 'Dropsea no ha podido abrir esta carpeta.',
   couldNotChange: 'Dropsea no ha podido hacerlo. Inténtalo de nuevo.',
   cloudProblem: (name) => `Oxy Files no ha podido cambiar «${name}».`,

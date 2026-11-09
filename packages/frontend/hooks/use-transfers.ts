@@ -6,7 +6,7 @@ import { Linking } from 'react-native';
 import { cloudFilesKey } from '@/hooks/use-cloud-files';
 import { useLocale } from '@/hooks/use-locale';
 import { useViewer } from '@/hooks/use-viewer';
-import { changeFileTags, lookupFileTags } from '@/lib/dropsea-api';
+import { changeFileTags, HAS_DROPSEA_BACKEND, lookupFileTags } from '@/lib/dropsea-api';
 import { refreshFolder } from '@/lib/folder-store';
 import { formatPercent } from '@/lib/format';
 import type { LocalItem } from '@/lib/items';
@@ -54,9 +54,9 @@ export function useTransfers() {
 
   /** The tags of Oxy Files assets, by id; none when the backend cannot say. */
   const assetTags = async (assetIds: readonly string[]): Promise<Map<string, string[]>> => {
-    if (assetIds.length === 0) return new Map();
+    if (assetIds.length === 0 || !HAS_DROPSEA_BACKEND) return new Map();
     try {
-      return new Map(Object.entries(await lookupFileTags(assetIds)));
+      return new Map(Object.entries(await lookupFileTags(assetIds, 'person')));
     } catch (error) {
       console.warn('Dropsea could not read the tags of files it downloads', { error });
       return new Map();
@@ -94,7 +94,7 @@ export function useTransfers() {
           });
           state.fraction = 1;
           assetIds[index] = uploaded.file.id;
-          if (item.tags.length > 0) {
+          if (item.tags.length > 0 && HAS_DROPSEA_BACKEND) {
             try {
               await changeFileTags([uploaded.file.id], item.tags, []);
             } catch (error) {

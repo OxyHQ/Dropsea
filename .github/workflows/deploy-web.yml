@@ -49,11 +49,14 @@ jobs:
       actions: read
     env:
       # Public, compile-time values: the registered Oxy client id and the Oxy
-      # application photos are linked to (packages/frontend/.env.example). The
-      # API URLs are lib/config.ts's defaults: a variable set here but empty
-      # would be built in as '' and replace them.
+      # application photos are linked to (packages/frontend/.env.example). Oxy's
+      # API URL is lib/config.ts's default: a variable set here but empty would
+      # be built in as '' and replace it. Dropsea's backend has no default: the
+      # app calls one only once the repository variable names it, and until
+      # then says albums are not available yet.
       EXPO_PUBLIC_OXY_CLIENT_ID: ${{ vars.EXPO_PUBLIC_OXY_CLIENT_ID }}
       EXPO_PUBLIC_DROPSEA_APPLICATION_ID: ${{ vars.EXPO_PUBLIC_DROPSEA_APPLICATION_ID }}
+      EXPO_PUBLIC_DROPSEA_API_URL: ${{ vars.EXPO_PUBLIC_DROPSEA_API_URL }}
       GH_TOKEN: ${{ github.token }}
     steps:
       # An app built without its client id cannot sign anyone in: refuse to

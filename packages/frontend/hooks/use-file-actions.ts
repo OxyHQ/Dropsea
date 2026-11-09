@@ -23,7 +23,7 @@ import {
 } from '@/lib/local-files';
 import { isSameUri, parentUri } from '@/lib/local-places';
 import { freeName } from '@/lib/names';
-import { forgetFileTags } from '@/lib/dropsea-api';
+import { forgetFileTags, HAS_DROPSEA_BACKEND } from '@/lib/dropsea-api';
 import { transferFiles } from '@/lib/operations';
 import { oxyServices } from '@/lib/oxy';
 import { type Replayed, recordChange, redoChange, undoChange } from '@/lib/undo';
@@ -120,6 +120,7 @@ export function useFileActions() {
    */
   const deleteAsset = async (assetId: string) => {
     await oxyServices.assets.delete(assetId);
+    if (!HAS_DROPSEA_BACKEND) return;
     try {
       await forgetFileTags([assetId]);
     } catch (error) {
