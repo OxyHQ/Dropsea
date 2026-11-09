@@ -362,7 +362,9 @@ export function BackupsBrowser({ folderUri }: { folderUri: string }) {
           <View className="flex-1">
             {restoring.progress ? (
               <RestoreProgressRow progress={restoring.progress} onStop={restoring.stop} />
-            ) : (
+            ) : contents.data ? (
+              // Counted once the backup's items are known, as the folder's status bar is: while
+              // Dropsea looks there are not none, and the reader would say so.
               <Text
                 variant="caption-1-regular"
                 className="text-text-secondary"
@@ -373,7 +375,7 @@ export function BackupsBrowser({ folderUri }: { folderUri: string }) {
                   ? strings.selected(chosenItems.length, items.length)
                   : strings.items(items.length)}
               </Text>
-            )}
+            ) : null}
           </View>
           <Button
             appearance="outline"
