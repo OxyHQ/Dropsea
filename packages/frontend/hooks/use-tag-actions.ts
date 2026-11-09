@@ -15,7 +15,12 @@ import { cloudTagsKey, LOCAL_TAGS_KEY } from '@/hooks/use-item-tags';
 import { useLocale } from '@/hooks/use-locale';
 import { useTagDefinitions } from '@/hooks/use-tag-definitions';
 import { useViewer } from '@/hooks/use-viewer';
-import { changeFileTags, removeFileTag, renameFileTag } from '@/lib/dropsea-api';
+import {
+  changeFileTags,
+  HAS_DROPSEA_BACKEND,
+  removeFileTag,
+  renameFileTag,
+} from '@/lib/dropsea-api';
 import { assetIdOf, type Item } from '@/lib/items';
 import {
   type ItemTag,
@@ -28,9 +33,14 @@ import {
   withoutDefinition,
 } from '@/lib/tags';
 
-/** Whether an item's tags can change: a file on this device, or an Oxy Files asset; not an album, nor what is in a Trash. */
+/**
+ * Whether an item's tags can change: a file on this device, or an Oxy Files
+ * asset where this build has Dropsea's backend (which keeps an asset's tags);
+ * not an album, nor what is in a Trash.
+ */
 export function canTag(item: Item): boolean {
-  return item.source === 'local' || item.source === 'cloud' || item.source === 'album-photo';
+  if (item.source === 'local') return true;
+  return HAS_DROPSEA_BACKEND && (item.source === 'cloud' || item.source === 'album-photo');
 }
 
 export interface TagChange {
@@ -132,7 +142,7 @@ export function useTagActions() {
       });
       failed += outcomes.filter((outcome) => !outcome.ok).length;
     }
-    if (isSignedIn) {
+    if (isSignedIn && HAS_DROPSEA_BACKEND) {
       try {
         await renameFileTag(from, to.trim());
       } catch (error) {
@@ -153,7 +163,7 @@ export function useTagActions() {
       const outcomes = await tags.change(uris, { remove: [name] });
       failed += outcomes.filter((outcome) => !outcome.ok).length;
     }
-    if (isSignedIn) {
+    if (isSignedIn && HAS_DROPSEA_BACKEND) {
       try {
         await removeFileTag(name);
       } catch (error) {

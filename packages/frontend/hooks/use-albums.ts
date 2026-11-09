@@ -1,7 +1,7 @@
 import type { Album } from '@dropsea/shared-types';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useViewer } from '@/hooks/use-viewer';
-import { getAlbum, listAlbumItems, listAlbums } from '@/lib/dropsea-api';
+import { getAlbum, HAS_DROPSEA_BACKEND, listAlbumItems, listAlbums } from '@/lib/dropsea-api';
 
 /** The query key of a person's albums, which a change to any album invalidates. */
 export function albumsKey(userId: string | null) {
@@ -13,7 +13,7 @@ export function useAlbums() {
   return useQuery({
     queryKey: albumsKey(userId),
     queryFn: listAlbums,
-    enabled: isSignedIn,
+    enabled: isSignedIn && HAS_DROPSEA_BACKEND,
   });
 }
 
@@ -22,7 +22,7 @@ export function useAlbum(albumId: string) {
   return useQuery({
     queryKey: [...albumsKey(userId), albumId],
     queryFn: () => getAlbum(albumId),
-    enabled: isSignedIn,
+    enabled: isSignedIn && HAS_DROPSEA_BACKEND,
   });
 }
 
@@ -31,10 +31,10 @@ export function useAlbumItems(albumId: string) {
   const { userId, isSignedIn } = useViewer();
   return useInfiniteQuery({
     queryKey: [...albumsKey(userId), albumId, 'items'],
-    queryFn: ({ pageParam }) => listAlbumItems(albumId, pageParam),
+    queryFn: ({ pageParam }) => listAlbumItems(albumId, pageParam, 'background'),
     initialPageParam: null as string | null,
     getNextPageParam: (last) => last.nextCursor,
-    enabled: isSignedIn,
+    enabled: isSignedIn && HAS_DROPSEA_BACKEND,
   });
 }
 

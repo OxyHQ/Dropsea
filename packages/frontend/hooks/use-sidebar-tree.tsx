@@ -33,6 +33,7 @@ import { useLocale } from '@/hooks/use-locale';
 import { useSpringLoading } from '@/hooks/use-spring-loading';
 import { useTagDefinitions } from '@/hooks/use-tag-definitions';
 import { useViewer } from '@/hooks/use-viewer';
+import { HAS_DROPSEA_BACKEND } from '@/lib/dropsea-api';
 import { type Location, locationKey } from '@/lib/items';
 import type { LocalPlace } from '@/lib/local-places';
 import { favouriteTags, updatedDefinition, type TagDefinition } from '@/lib/tags';
@@ -210,7 +211,8 @@ export function useSidebarTree(
     tree.push({
       key: 'albums',
       label: strings.sections.albums,
-      actions: (
+      // A build without Dropsea's backend has no albums yet: the Albums row says so, and nothing makes one.
+      actions: HAS_DROPSEA_BACKEND ? (
         <Button
           size="xs"
           iconOnly
@@ -221,8 +223,8 @@ export function useSidebarTree(
           onPress={actions.newAlbum}
           testID="new-album"
         />
-      ),
-      loading: isLoadingAlbums,
+      ) : undefined,
+      loading: HAS_DROPSEA_BACKEND && isLoadingAlbums,
       error: hasAlbumsError ? strings.couldNotLoad : undefined,
       emptyLabel: strings.empty.albums,
       items: [

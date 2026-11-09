@@ -18,6 +18,7 @@ import {
   type Location,
   type TrashItem,
 } from '@/lib/items';
+import { HAS_DROPSEA_BACKEND } from '@/lib/dropsea-api';
 import { hasLocalFiles } from '@/lib/local-files';
 import { folderName, isSameUri, type LocalPlace, uriName } from '@/lib/local-places';
 import { downloadableOf } from '@/lib/transfers';
@@ -205,7 +206,7 @@ export function useCommands(context: CommandContext) {
       setSelection({ keys: [made.key], anchor: made.key, focus: made.key });
       startRename(made);
     }),
-    newAlbum: command(isSignedIn, newAlbum),
+    newAlbum: command(isSignedIn && HAS_DROPSEA_BACKEND, newAlbum),
     /** Into the Trash: the platform's for this device's items, Oxy Files' for its own. */
     moveToTrash: command(
       !isInTrash &&

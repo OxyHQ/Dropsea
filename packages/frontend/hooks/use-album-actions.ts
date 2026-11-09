@@ -81,7 +81,7 @@ export function useAlbumActions() {
         const assetIds: string[] = [];
         let cursor: string | null = null;
         do {
-          const page = await listAlbumItems(album.id, cursor);
+          const page = await listAlbumItems(album.id, cursor, 'person');
           assetIds.push(...page.items.map((item) => item.assetId));
           cursor = page.nextCursor;
         } while (cursor);
