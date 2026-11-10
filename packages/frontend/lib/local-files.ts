@@ -11,7 +11,6 @@
 import { requireOptionalNativeModule } from 'expo';
 import { Directory, File, Paths } from 'expo-file-system';
 import { type LocalItem, localItem } from '@/lib/items';
-import { parentUri, uriName } from '@/lib/local-places';
 import { type NameProblem, nameProblem } from '@/lib/names';
 import type { FileProblem } from '@/lib/strings';
 
@@ -99,7 +98,8 @@ export function folderExists(uri: string): boolean {
   return new Directory(uri).exists;
 }
 
-function namesIn(folderUri: string): string[] {
+/** The names a folder holds now. */
+export function namesIn(folderUri: string): string[] {
   return new Directory(folderUri).list().map((entry) => entry.name);
 }
 
@@ -197,47 +197,6 @@ export async function relocateItems(
 export interface Relocated {
   from: string;
   to: string;
-}
-
-/** What `relocateItems` did, of `items` (in the order it was given them) to their outcomes. */
-export function relocationsDone(
-  items: readonly LocalItem[],
-  outcomes: readonly LocalOutcome[],
-): Relocated[] {
-  return items.flatMap((item, index) => {
-    const outcome = outcomes[index];
-    return outcome?.ok ? [{ from: item.uri, to: outcome.uri }] : [];
-  });
-}
-
-/**
- * Moves or copies the item at each `from` to its `to` (into that folder, under that name), as Undo
- * and Redo do a change again, never over an item there: what came of each, and what was done. An
- * item no longer there, or whose folder is no longer there, is not found.
- */
-export async function relocateEach(
-  requests: readonly Relocated[],
-  relocation: Relocation,
-): Promise<{ outcomes: LocalOutcome[]; done: Relocated[] }> {
-  const outcomes: LocalOutcome[] = [];
-  const done: Relocated[] = [];
-  for (const { from, to } of requests) {
-    const into = parentUri(to);
-    const name = uriName(to);
-    const [item] = itemsAtUris([from]);
-    if (!item || !folderExists(into)) {
-      outcomes.push({ key: from, ok: false, problem: 'not-found' });
-      continue;
-    }
-    if (nameProblem(name, namesIn(into)) === 'taken') {
-      outcomes.push({ key: item.key, ok: false, problem: 'exists' });
-      continue;
-    }
-    const outcome = await relocateItem(item, into, name, relocation);
-    outcomes.push(outcome);
-    if (outcome.ok) done.push({ from: item.uri, to: outcome.uri });
-  }
-  return { outcomes, done };
 }
 
 /**
