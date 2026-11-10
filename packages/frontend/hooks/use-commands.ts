@@ -205,14 +205,13 @@ export function useCommands(context: CommandContext) {
     const [first] = keys;
     if (first) setSelection({ keys, anchor: first, focus: first });
   };
-  /** What an Undo or a Redo came to: its items selected and the screen reader told, or why not. */
+  /** What an Undo or a Redo came to (its items selected as it went): the screen reader told, or why not. */
   const showReplayed = (done: Replayed | null, said: (step: string) => string) => {
     if (!done) return;
     if (!done.ok) {
       showProblem(replayProblem(done, strings));
       return;
     }
-    selectShown(done.placed);
     AccessibilityInfo.announceForAccessibility(said(stepName(done.step, strings)));
   };
 
@@ -305,7 +304,7 @@ export function useCommands(context: CommandContext) {
      */
     undo: command(undoState.undo !== null, () =>
       runAsync('undo a change', async () =>
-        showReplayed(await fileActions.undo(), strings.undo.undone),
+        showReplayed(await fileActions.undo(selectShown), strings.undo.undone),
       ),
     ),
     undoName: undoState.undo
@@ -313,7 +312,7 @@ export function useCommands(context: CommandContext) {
       : strings.menus.undo,
     redo: command(undoState.redo !== null, () =>
       runAsync('redo a change', async () =>
-        showReplayed(await fileActions.redo(), strings.undo.redone),
+        showReplayed(await fileActions.redo(selectShown), strings.undo.redone),
       ),
     ),
     redoName: undoState.redo

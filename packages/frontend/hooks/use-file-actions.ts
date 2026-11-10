@@ -101,9 +101,17 @@ export function useFileActions() {
     const failed = outcomes.find((outcome) => !outcome.ok);
     if (failed && !failed.ok) toast.error(strings.fileProblems[failed.error]);
   };
-  /** Shows what an Undo or a Redo changed: the folders, both Trashes and the tags. */
-  const showReplayed = async (done: Replayed | null): Promise<Replayed | null> => {
+  /**
+   * Shows what an Undo or a Redo changed: the folders, both Trashes and the tags. `select` is
+   * told what it placed first, so the folders show those items selected as they come, and the
+   * selection is never seen empty between the two.
+   */
+  const showReplayed = async (
+    done: Replayed | null,
+    select: (uris: readonly string[]) => void,
+  ): Promise<Replayed | null> => {
     if (!done) return null;
+    if (done.ok) select(done.placed);
     for (const folder of done.folders) refreshFolder(folder);
     await Promise.all([
       refreshPlatformTrash(),
@@ -314,13 +322,13 @@ export function useFileActions() {
     },
 
     /** Edit › Undo: the window's latest step taken back (ADR 0002); what it came to. */
-    async undo(): Promise<Replayed | null> {
-      return showReplayed(await inTurn(() => undoHistory.undo(undoPlatform)));
+    async undo(select: (uris: readonly string[]) => void): Promise<Replayed | null> {
+      return showReplayed(await inTurn(() => undoHistory.undo(undoPlatform)), select);
     },
 
     /** Edit › Redo: the latest step undone done again; what it came to. */
-    async redo(): Promise<Replayed | null> {
-      return showReplayed(await inTurn(() => undoHistory.redo(undoPlatform)));
+    async redo(select: (uris: readonly string[]) => void): Promise<Replayed | null> {
+      return showReplayed(await inTurn(() => undoHistory.redo(undoPlatform)), select);
     },
 
     /** Files dropped on the sidebar's Trash: the items the URIs name now, as Move to Trash. */
