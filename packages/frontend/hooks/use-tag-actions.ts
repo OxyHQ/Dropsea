@@ -103,6 +103,7 @@ export function useTagActions() {
     }
     const assets = [...assetNames.keys()];
     const entries: TaggedEntry[] = [];
+    const shown: Promise<unknown>[] = [];
     const changed = (target: TagTarget, name: string, before: ItemTag[], after: ItemTag[]) => {
       const isSame =
         before.length === after.length &&
@@ -123,7 +124,7 @@ export function useTagActions() {
           : (await tags.ofItems(uris)).map((each) => (each ?? []).map(itemTagOf));
         const outcomes = await tags.change(uris, { add, remove });
         // Shown at once: what the window says of the items (a screen reader on one) is never behind.
-        queryClient.invalidateQueries({ queryKey: LOCAL_TAGS_KEY });
+        shown.push(queryClient.invalidateQueries({ queryKey: LOCAL_TAGS_KEY }));
         outcomes.forEach((outcome, index) => {
           const item = local[index];
           if (!outcome.ok) {
@@ -163,8 +164,12 @@ export function useTagActions() {
         console.warn('Dropsea could not change the tags of Oxy Files assets', { assets, error });
       }
     }
+    if (assets.length > 0)
+      shown.push(queryClient.invalidateQueries({ queryKey: cloudTagsKey(userId) }));
+    // The Edit menu names the step once the items show their tags: its new title, told to the
+    // platform's menu bar, never goes ahead of them.
+    await Promise.all(shown);
     undoHistory.record('tags', entries[0]?.name ?? '', entries);
-    if (assets.length > 0) queryClient.invalidateQueries({ queryKey: cloudTagsKey(userId) });
     if (failed > 0) toast.error(strings.tags.couldNotChange(failed));
   };
 

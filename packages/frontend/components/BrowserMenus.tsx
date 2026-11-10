@@ -21,7 +21,7 @@ import {
 } from '@oxy.so/bloom/menubar';
 import { type PlatformEditing, usePlatformEditing } from '@oxy.so/bloom/platform-surface';
 import { useCallback, useSyncExternalStore } from 'react';
-import type { ViewMode } from '@/components/BrowserProvider';
+import { useBrowser, type ViewMode } from '@/components/BrowserProvider';
 import type { Commands } from '@/hooks/use-commands';
 import { useLocale } from '@/hooks/use-locale';
 import type { Location } from '@/lib/items';
@@ -29,6 +29,7 @@ import type { LocalPlace } from '@/lib/local-places';
 import type { Strings } from '@/lib/strings';
 import type { Grouping, SortColumn, SortOrder } from '@/lib/sorting';
 import { KEYBOARD_TAG_COUNT } from '@/lib/tags';
+import { stepName, useUndoState } from '@/lib/undo';
 
 const SORT_COLUMNS: readonly SortColumn[] = ['name', 'kind', 'date', 'size', 'tags'];
 
@@ -130,6 +131,8 @@ export function BrowserMenus({
   const { strings } = useLocale();
   const { navigationDock } = useAppShell();
   const isFieldEditing = useIsFieldEditing(usePlatformEditing());
+  // Edit › Undo and Redo name the window's latest steps (ADR 0002), followed here alone.
+  const { undo, redo } = useUndoState(useBrowser().undoHistory);
   const isInTrash = location.kind === 'trash';
   const home = places.find((place) => place.kind === 'home');
   return (
@@ -359,19 +362,15 @@ export function BrowserMenus({
           {/* Standard editing actions: a field with the keys takes them (its own undo, its text
               selected), else they are the window's, as a Mac's Edit menu goes to the first
               responder. */}
-          <MenubarItem
-            action="undo"
-            disabled={!commands.undo.isEnabled}
-            onPress={commands.undo.run}
-          >
-            {isFieldEditing ? strings.menus.undo : commands.undoName}
+          <MenubarItem action="undo" disabled={undo === null} onPress={commands.undo}>
+            {isFieldEditing || undo === null
+              ? strings.menus.undo
+              : strings.undo.undo(stepName(undo, strings))}
           </MenubarItem>
-          <MenubarItem
-            action="redo"
-            disabled={!commands.redo.isEnabled}
-            onPress={commands.redo.run}
-          >
-            {isFieldEditing ? strings.menus.redo : commands.redoName}
+          <MenubarItem action="redo" disabled={redo === null} onPress={commands.redo}>
+            {isFieldEditing || redo === null
+              ? strings.menus.redo
+              : strings.undo.redo(stepName(redo, strings))}
           </MenubarItem>
           <MenubarSeparator />
           <MenubarItem

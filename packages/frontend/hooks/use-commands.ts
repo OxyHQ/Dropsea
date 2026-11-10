@@ -1,6 +1,5 @@
 import type { Album } from '@dropsea/shared-types';
 import { AccessibilityInfo } from 'react-native';
-import { useBrowser } from '@/components/BrowserProvider';
 import { useAlbumActions } from '@/hooks/use-album-actions';
 import { useFileActions } from '@/hooks/use-file-actions';
 import { useFileDrops } from '@/hooks/use-file-drops';
@@ -26,7 +25,7 @@ import { folderName, isSameUri, type LocalPlace, parentUri } from '@/lib/local-p
 import { downloadableOf } from '@/lib/transfers';
 import { favouriteTags, type ItemTag, tagState, toggledTag } from '@/lib/tags';
 import type { Strings } from '@/lib/strings';
-import { type Replayed, stepName, useUndoState } from '@/lib/undo';
+import { type Replayed, stepName } from '@/lib/undo';
 
 /** Something the person can do now, from a menu, a key or a screen reader. */
 export interface Command {
@@ -158,7 +157,6 @@ export function useCommands(context: CommandContext) {
   const albumActions = useAlbumActions();
   const { isSignedIn, signIn } = useViewer();
   const { strings } = useLocale();
-  const undoState = useUndoState(useBrowser().undoHistory);
   const tagActions = useTagActions();
 
   const isInTrash = location.kind === 'trash';
@@ -299,25 +297,18 @@ export function useCommands(context: CommandContext) {
       if (shownAlbum) confirm({ kind: 'delete-album', album: shownAlbum });
     }),
     /**
-     * Edit › Undo and Redo (ADR 0002): the window's latest step taken back, or done again, named
-     * as the menu shows it (“Undo Move “Facturas””), plain “Undo” with nothing to undo.
+     * Edit › Undo and Redo (ADR 0002): the window's latest step taken back, or done again. The
+     * Edit menu follows the history itself, for its titles and whether each is enabled: a step
+     * recorded draws the menu again, never the window.
      */
-    undo: command(undoState.undo !== null, () =>
+    undo: () =>
       runAsync('undo a change', async () =>
         showReplayed(await fileActions.undo(selectShown), strings.undo.undone),
       ),
-    ),
-    undoName: undoState.undo
-      ? strings.undo.undo(stepName(undoState.undo, strings))
-      : strings.menus.undo,
-    redo: command(undoState.redo !== null, () =>
+    redo: () =>
       runAsync('redo a change', async () =>
         showReplayed(await fileActions.redo(selectShown), strings.undo.redone),
       ),
-    ),
-    redoName: undoState.redo
-      ? strings.undo.redo(stepName(undoState.redo, strings))
-      : strings.menus.redo,
     /** File › Duplicate: a copy of each item beside it, the copies selected, as Finder's. */
     duplicate: command(isAllLocal, () =>
       runAsync('duplicate items', async () => {
