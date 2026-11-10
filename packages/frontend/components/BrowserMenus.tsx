@@ -101,6 +101,7 @@ export function BrowserMenus({
   onEnclosing,
   onGo,
   onSettings,
+  onFind,
 }: {
   commands: Commands;
   location: Location;
@@ -126,6 +127,8 @@ export function BrowserMenus({
   onGo: (location: Location) => void;
   /** Dropsea's settings (its Tags). */
   onSettings: () => void;
+  /** Edit › Find…: the toolbar's search field takes the keyboard. */
+  onFind: () => void;
 }) {
   const { strings } = useLocale();
   const { navigationDock } = useAppShell();
@@ -367,12 +370,22 @@ export function BrowserMenus({
             {isFieldEditing ? strings.menus.redo : commands.redoName}
           </MenubarItem>
           <MenubarSeparator />
+          {/* A field's own (the rename, the search): with none focused they are disabled, as
+              Dropsea has no clipboard of files. */}
+          <MenubarItem action="cut">{strings.menus.cut}</MenubarItem>
+          <MenubarItem action="copy">{strings.menus.copy}</MenubarItem>
+          <MenubarItem action="paste">{strings.menus.paste}</MenubarItem>
           <MenubarItem
             action="selectAll"
             disabled={!commands.selectAll.isEnabled}
             onPress={commands.selectAll.run}
           >
             {strings.menus.selectAll}
+          </MenubarItem>
+          <MenubarSeparator />
+          {/* Finder's Find (⌘F): the toolbar's search field takes the keyboard. */}
+          <MenubarItem shortcut="Mod+F" onPress={onFind}>
+            {strings.menus.find}
           </MenubarItem>
         </MenubarContent>
       </MenubarMenu>

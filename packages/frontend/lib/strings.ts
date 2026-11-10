@@ -249,7 +249,11 @@ const en = {
       count === 1 ? `Undo Copy of “${name}”` : `Undo Copy of ${count} Items`,
     redoCopy: (count: number, name: string) =>
       count === 1 ? `Redo Copy of “${name}”` : `Redo Copy of ${count} Items`,
+    cut: 'Cut',
+    copy: 'Copy',
+    paste: 'Paste',
     selectAll: 'Select All',
+    find: 'Find…',
     showHidden: 'Show Hidden Files',
     showSidebar: 'Show Sidebar',
     hideSidebar: 'Hide Sidebar',
@@ -656,7 +660,11 @@ const es: Strings = {
       count === 1 ? `Deshacer la copia de «${name}»` : `Deshacer la copia de ${count} elementos`,
     redoCopy: (count, name) =>
       count === 1 ? `Rehacer la copia de «${name}»` : `Rehacer la copia de ${count} elementos`,
+    cut: 'Cortar',
+    copy: 'Copiar',
+    paste: 'Pegar',
     selectAll: 'Seleccionar todo',
+    find: 'Buscar…',
     showHidden: 'Mostrar archivos ocultos',
     showSidebar: 'Mostrar barra lateral',
     hideSidebar: 'Ocultar barra lateral',
