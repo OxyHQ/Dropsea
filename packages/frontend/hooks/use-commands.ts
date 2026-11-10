@@ -191,7 +191,7 @@ export function useCommands(context: CommandContext) {
   const isAllTaggable = selected.length > 0 && selected.every(canTag);
   const selectedTags = selected.map(tagsOf);
   const changeTags = (change: TagChange) =>
-    runAsync('change tags', () => tagActions.change(selected, change));
+    runAsync('change tags', () => tagActions.change(selected, change, tagsOf));
 
   /**
    * Selects this device's items where the window shows them, as Finder selects what an Undo
@@ -369,7 +369,7 @@ export function useCommands(context: CommandContext) {
       changeTags({ remove: [...new Set(selectedTags.flat().map((tag) => tag.name))] }),
     ),
     changeTags: (items: readonly Item[], change: TagChange) =>
-      runAsync('change tags', () => tagActions.change(items, change)),
+      runAsync('change tags', () => tagActions.change(items, change, tagsOf)),
 
     /** Dropping dragged items on an item: into a folder, into an album. */
     canDrop: (dragged: readonly Item[], target: Item) => {

@@ -23,8 +23,9 @@ import {
   removeFileTag,
   renameFileTag,
 } from '@/lib/dropsea-api';
-import { assetIdOf, type Item } from '@/lib/items';
+import { assetIdOf, type Item, type LocalItem } from '@/lib/items';
 import {
+  changedTags,
   type ItemTag,
   isSameTag,
   renamedDefinitions,
@@ -78,9 +79,14 @@ export function useTagActions() {
 
   /**
    * Changes the tags of `items`, a step of the window's Undo history (ADR 0002) with each item's
-   * tags before and after; a toast says how many could not change.
+   * tags before and after; a toast says how many could not change. `tagsOf` is what the window
+   * shows of each item's tags, where it shows them: this device's files are then not read first.
    */
-  const change = async (items: readonly Item[], tagChange: TagChange): Promise<void> => {
+  const change = async (
+    items: readonly Item[],
+    tagChange: TagChange,
+    tagsOf: ((item: Item) => readonly ItemTag[]) | null = null,
+  ): Promise<void> => {
     const known = definitionsByKey(definitions);
     // A tag goes on an item with its colour, so a file going to a Mac shows it there too.
     const add = (tagChange.add ?? []).map((tag) => ({
@@ -88,9 +94,7 @@ export function useTagActions() {
       color: tagColorOf(tag, known),
     }));
     const remove = tagChange.remove ?? [];
-    const local = items.flatMap((item) =>
-      item.source === 'local' ? [{ uri: item.uri, name: item.name }] : [],
-    );
+    const local = items.filter((item): item is LocalItem => item.source === 'local');
     const assetNames = new Map<string, string>();
     for (const item of items) {
       const assetId =
@@ -114,9 +118,12 @@ export function useTagActions() {
     if (local.length > 0) {
       if (tags) {
         const uris = local.map((item) => item.uri);
-        const before = await tags.ofItems(uris);
+        const before = tagsOf
+          ? local.map(tagsOf)
+          : (await tags.ofItems(uris)).map((each) => (each ?? []).map(itemTagOf));
         const outcomes = await tags.change(uris, { add, remove });
-        const after = await tags.ofItems(uris);
+        // Shown at once: what the window says of the items (a screen reader on one) is never behind.
+        queryClient.invalidateQueries({ queryKey: LOCAL_TAGS_KEY });
         outcomes.forEach((outcome, index) => {
           const item = local[index];
           if (!outcome.ok) {
@@ -125,11 +132,12 @@ export function useTagActions() {
             return;
           }
           if (!item) return;
+          const had = [...(before[index] ?? [])];
           changed(
             { kind: 'file', uri: item.uri },
             item.name,
-            (before[index] ?? []).map(itemTagOf),
-            (after[index] ?? []).map(itemTagOf),
+            had,
+            changedTags(had, { add, remove }),
           );
         });
       } else {
@@ -156,7 +164,7 @@ export function useTagActions() {
       }
     }
     undoHistory.record('tags', entries[0]?.name ?? '', entries);
-    refresh();
+    if (assets.length > 0) queryClient.invalidateQueries({ queryKey: cloudTagsKey(userId) });
     if (failed > 0) toast.error(strings.tags.couldNotChange(failed));
   };
 
