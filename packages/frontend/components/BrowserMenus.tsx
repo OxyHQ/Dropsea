@@ -240,6 +240,13 @@ export function BrowserMenus({
               <MenubarItem disabled={!commands.rename.isEnabled} onPress={commands.rename.run}>
                 {strings.menus.rename}
               </MenubarItem>
+              <MenubarItem
+                shortcut="Mod+D"
+                disabled={!commands.duplicate.isEnabled}
+                onPress={commands.duplicate.run}
+              >
+                {strings.menus.duplicate}
+              </MenubarItem>
               {commands.hasPlatformTrash || !commands.deleteForGood.isEnabled ? (
                 <MenubarItem
                   shortcut="Mod+Backspace"

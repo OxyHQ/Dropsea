@@ -11,13 +11,15 @@
 import { usePlatformFiles } from '@oxy.so/bloom/platform-surface';
 import { toast } from '@oxy.so/bloom/toast';
 import { useQueryClient } from '@tanstack/react-query';
-import { cloudTagsKey, LOCAL_TAGS_KEY } from '@/hooks/use-item-tags';
+import { useBrowser } from '@/components/BrowserProvider';
+import { cloudTagsKey, itemTagOf, LOCAL_TAGS_KEY } from '@/hooks/use-item-tags';
 import { useLocale } from '@/hooks/use-locale';
 import { useTagDefinitions } from '@/hooks/use-tag-definitions';
 import { useViewer } from '@/hooks/use-viewer';
 import {
   changeFileTags,
   HAS_DROPSEA_BACKEND,
+  lookupFileTags,
   removeFileTag,
   renameFileTag,
 } from '@/lib/dropsea-api';
@@ -32,6 +34,9 @@ import {
   withDefinition,
   withoutDefinition,
 } from '@/lib/tags';
+import type { TagTarget, UndoEntry } from '@/lib/undo';
+
+type TaggedEntry = Extract<UndoEntry, { kind: 'tagged' }>;
 
 /**
  * Whether an item's tags can change: a file on this device, or an Oxy Files
@@ -55,6 +60,7 @@ export function useTagActions() {
   const { strings } = useLocale();
   const { userId, isSignedIn } = useViewer();
   const { definitions, save } = useTagDefinitions();
+  const { undoHistory } = useBrowser();
 
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: LOCAL_TAGS_KEY });
@@ -70,7 +76,10 @@ export function useTagActions() {
     if (next.length !== definitions.length) await save(next);
   };
 
-  /** Changes the tags of `items`; a toast says how many could not change. */
+  /**
+   * Changes the tags of `items`, a step of the window's Undo history (ADR 0002) with each item's
+   * tags before and after; a toast says how many could not change.
+   */
   const change = async (items: readonly Item[], tagChange: TagChange): Promise<void> => {
     const known = definitionsByKey(definitions);
     // A tag goes on an item with its colour, so a file going to a Mac shows it there too.
@@ -79,14 +88,23 @@ export function useTagActions() {
       color: tagColorOf(tag, known),
     }));
     const remove = tagChange.remove ?? [];
-    const local = items.flatMap((item) => (item.source === 'local' ? [item.uri] : []));
-    const assets = [
-      ...new Set(
-        items.flatMap((item) =>
-          item.source === 'cloud' || item.source === 'album-photo' ? [assetIdOf(item) ?? ''] : [],
-        ),
-      ),
-    ].filter((id) => id !== '');
+    const local = items.flatMap((item) =>
+      item.source === 'local' ? [{ uri: item.uri, name: item.name }] : [],
+    );
+    const assetNames = new Map<string, string>();
+    for (const item of items) {
+      const assetId =
+        item.source === 'cloud' || item.source === 'album-photo' ? assetIdOf(item) : null;
+      if (assetId && !assetNames.has(assetId)) assetNames.set(assetId, item.name);
+    }
+    const assets = [...assetNames.keys()];
+    const entries: TaggedEntry[] = [];
+    const changed = (target: TagTarget, name: string, before: ItemTag[], after: ItemTag[]) => {
+      const isSame =
+        before.length === after.length &&
+        before.every((tag) => after.some((other) => isSameTag(other.name, tag.name)));
+      if (!isSame) entries.push({ kind: 'tagged', target, name, before, after });
+    };
     let failed = 0;
     try {
       await remember(add);
@@ -95,13 +113,25 @@ export function useTagActions() {
     }
     if (local.length > 0) {
       if (tags) {
-        const outcomes = await tags.change(local, { add, remove });
-        for (const outcome of outcomes) {
+        const uris = local.map((item) => item.uri);
+        const before = await tags.ofItems(uris);
+        const outcomes = await tags.change(uris, { add, remove });
+        const after = await tags.ofItems(uris);
+        outcomes.forEach((outcome, index) => {
+          const item = local[index];
           if (!outcome.ok) {
             failed++;
             console.warn('The platform could not change a file’s tags', outcome);
+            return;
           }
-        }
+          if (!item) return;
+          changed(
+            { kind: 'file', uri: item.uri },
+            item.name,
+            (before[index] ?? []).map(itemTagOf),
+            (after[index] ?? []).map(itemTagOf),
+          );
+        });
       } else {
         failed += local.length;
       }
@@ -109,16 +139,23 @@ export function useTagActions() {
     if (assets.length > 0) {
       try {
         if (!isSignedIn) throw new Error('Oxy Files needs the person signed in');
-        await changeFileTags(
+        const before = await lookupFileTags(assets, 'person');
+        const after = await changeFileTags(
           assets,
           add.map((tag) => tag.name),
           remove,
         );
+        const named = (names: readonly string[] | undefined): ItemTag[] =>
+          (names ?? []).map((name) => ({ name, color: null }));
+        for (const [assetId, name] of assetNames) {
+          changed({ kind: 'asset', assetId }, name, named(before[assetId]), named(after[assetId]));
+        }
       } catch (error) {
         failed += assets.length;
         console.warn('Dropsea could not change the tags of Oxy Files assets', { assets, error });
       }
     }
+    undoHistory.record('tags', entries[0]?.name ?? '', entries);
     refresh();
     if (failed > 0) toast.error(strings.tags.couldNotChange(failed));
   };

@@ -5,11 +5,13 @@ import {
 } from '@oxy.so/bloom/platform-surface';
 import { toast } from '@oxy.so/bloom/toast';
 import { useQueryClient } from '@tanstack/react-query';
+import { useBrowser } from '@/components/BrowserProvider';
 import { cloudFilesKey } from '@/hooks/use-cloud-files';
+import { cloudTagsKey, LOCAL_TAGS_KEY } from '@/hooks/use-item-tags';
 import { useLocale } from '@/hooks/use-locale';
 import { PLATFORM_TRASH_KEY } from '@/hooks/use-trash';
 import { useViewer } from '@/hooks/use-viewer';
-import { getFolderState, refreshFolder } from '@/lib/folder-store';
+import { refreshFolder } from '@/lib/folder-store';
 import type { CloudItem, Item, LocalItem, TrashItem } from '@/lib/items';
 import {
   type ChangeProblem,
@@ -17,16 +19,22 @@ import {
   deleteItems,
   itemsAtUris,
   type LocalOutcome,
-  type Relocated,
+  namesIn,
   type Relocation,
+  relocateItem,
   renameItem,
 } from '@/lib/local-files';
-import { isSameUri, parentUri } from '@/lib/local-places';
-import { freeName } from '@/lib/names';
-import { forgetFileTags, HAS_DROPSEA_BACKEND } from '@/lib/dropsea-api';
-import { transferFiles } from '@/lib/operations';
+import { isSameUri, parentUri, uriName } from '@/lib/local-places';
+import { copyName, freeName } from '@/lib/names';
+import {
+  changeFileTags,
+  forgetFileTags,
+  HAS_DROPSEA_BACKEND,
+  lookupFileTags,
+} from '@/lib/dropsea-api';
+import { inTurn, transferFiles } from '@/lib/operations';
 import { oxyServices } from '@/lib/oxy';
-import { type Replayed, recordChange, redoChange, undoChange } from '@/lib/undo';
+import type { Replayed, UndoEntry, UndoPlatform } from '@/lib/undo';
 
 /** Assets Oxy Files' trash is emptied in, a page at a time. */
 const EMPTY_PAGE_SIZE = 100;
@@ -39,17 +47,12 @@ function isCloud(item: Item): item is CloudItem {
   return item.source === 'cloud';
 }
 
-/** The names a folder holds now, for a new item's free name. */
-function namesIn(folderUri: string): string[] {
-  const state = getFolderState(folderUri);
-  return state.status === 'ready' ? state.items.map((item) => item.name) : [];
-}
-
 /**
- * What Dropsea does to items: new folders, renames and moves on this device;
- * the Trash (the platform's for this device's files, Oxy Files' for the
- * cloud's), putting back and deleting for good. Each says what failed, and
- * shows what changed at once.
+ * What Dropsea does to items: new folders, renames, moves, copies and
+ * duplicates on this device; the Trash (the platform's for this device's
+ * files, Oxy Files' for the cloud's), putting back and deleting for good. Each
+ * says what failed, shows what changed at once, and is a step of the window's
+ * Undo history (ADR 0002), but deleting for good, which cannot be undone.
  */
 export function useFileActions() {
   const files = usePlatformFiles();
@@ -58,10 +61,34 @@ export function useFileActions() {
   const sounds = usePlatformSounds();
   const queryClient = useQueryClient();
   const { strings } = useLocale();
-  const { userId } = useViewer();
+  const { userId, isSignedIn } = useViewer();
+  const { undoHistory } = useBrowser();
 
-  /** The platform's Trash, for what a Replace replaces and an Undo Copy's copies. */
+  /** The platform's Trash, for what a Replace replaces. */
   const trash = files ? (uris: readonly string[]) => files.trash(uris) : null;
+  /** What Undo and Redo act through. */
+  const undoPlatform: UndoPlatform = {
+    trash: files
+      ? {
+          trash: (uris) => files.trash(uris),
+          trashed: () => files.trashed(),
+          restore: (uris) => files.restore(uris),
+        }
+      : null,
+    tags: files?.tags ?? null,
+    cloud: isSignedIn
+      ? {
+          trash: (assetId) => oxyServices.assets.trash(assetId),
+          restore: (assetId) => oxyServices.assets.restore(assetId),
+          tags: HAS_DROPSEA_BACKEND
+            ? {
+                of: (assetIds) => lookupFileTags(assetIds, 'person'),
+                change: changeFileTags,
+              }
+            : null,
+        }
+      : null,
+  };
   const refreshCloud = () => queryClient.invalidateQueries({ queryKey: cloudFilesKey(userId) });
   const refreshPlatformTrash = () =>
     queryClient.invalidateQueries({ queryKey: PLATFORM_TRASH_KEY });
@@ -74,20 +101,17 @@ export function useFileActions() {
     const failed = outcomes.find((outcome) => !outcome.ok);
     if (failed && !failed.ok) toast.error(strings.fileProblems[failed.error]);
   };
-  /** Shows moves and copies done where the items were and where they went. */
-  const refreshRelocated = (relocated: readonly Relocated[]) => {
-    for (const { from, to } of relocated) {
-      refreshFolder(parentUri(from));
-      refreshFolder(parentUri(to));
-    }
-  };
-  /** Shows what an Undo or a Redo moved, copied or put in the Trash, and says what it could not. */
-  const showReplayed = async (done: Replayed | null) => {
-    if (!done) return;
-    refreshRelocated(done.relocated);
-    for (const uri of done.trashed) refreshFolder(parentUri(uri));
-    reportLocal(done.outcomes);
-    if (done.trashed.length > 0) await refreshPlatformTrash();
+  /** Shows what an Undo or a Redo changed: the folders, both Trashes and the tags. */
+  const showReplayed = async (done: Replayed | null): Promise<Replayed | null> => {
+    if (!done) return null;
+    for (const folder of done.folders) refreshFolder(folder);
+    await Promise.all([
+      refreshPlatformTrash(),
+      refreshCloud(),
+      queryClient.invalidateQueries({ queryKey: LOCAL_TAGS_KEY }),
+      queryClient.invalidateQueries({ queryKey: cloudTagsKey(userId) }),
+    ]);
+    return done;
   };
   /**
    * Moves or copies items into a folder as Finder does (`lib/operations`): the clashes asked
@@ -108,11 +132,20 @@ export function useFileActions() {
     refreshFolder(folder.uri);
     if (!result) return;
     if (relocation === 'move') for (const item of items) refreshFolder(parentUri(item.uri));
-    recordChange(relocation, result.relocated);
+    const [first] = result.relocated;
+    if (first) {
+      undoHistory.record(
+        relocation,
+        uriName(first.from),
+        result.relocated.map(
+          ({ from, to }): UndoEntry =>
+            relocation === 'move' ? { kind: 'moved', from, to } : { kind: 'created', uri: to },
+        ),
+      );
+    }
     reportLocal(result.outcomes);
     if (result.replaced.length > 0) await refreshPlatformTrash();
   };
-  /** Runs a change on each cloud item, saying which failed. */
   /**
    * Deletes an asset for good, and then the tags Dropsea kept for it: a tag outliving its file
    * would be found in no place. Their rows are only ever read by their owner, so one left behind
@@ -127,23 +160,29 @@ export function useFileActions() {
       console.warn('Dropsea deleted a file and could not forget its tags', { assetId, error });
     }
   };
-  const eachCloud = async (
-    items: readonly { assetId: string; name: string }[],
+  /** Runs a change on each cloud item, saying which failed; the items it changed. */
+  const eachCloud = async <T extends { assetId: string; name: string }>(
+    items: readonly T[],
     change: (assetId: string) => Promise<unknown>,
     action: string,
-  ) => {
+  ): Promise<T[]> => {
     const results = await Promise.allSettled(items.map((item) => change(item.assetId)));
+    const changed: T[] = [];
     results.forEach((result, index) => {
-      if (result.status === 'fulfilled') return;
       const item = items[index];
+      if (!item) return;
+      if (result.status === 'fulfilled') {
+        changed.push(item);
+        return;
+      }
       console.warn(`Dropsea could not ${action} in Oxy Files`, {
-        assetId: item?.assetId,
+        assetId: item.assetId,
         error: result.reason,
       });
-      if (item) toast.error(strings.cloudProblem(item.name));
+      toast.error(strings.cloudProblem(item.name));
     });
     await refreshCloud();
-    return results.some((result) => result.status === 'fulfilled');
+    return changed;
   };
 
   /**
@@ -153,6 +192,8 @@ export function useFileActions() {
   const moveToTrash = async (items: readonly Item[]): Promise<void> => {
     const local = items.filter(isLocal);
     const cloud = items.filter(isCloud);
+    const entries: UndoEntry[] = [];
+    const names: string[] = [];
     let hasSounded = false;
     if (local.length > 0 && files) {
       const outcomes = await files.trash(local.map((item) => item.uri));
@@ -160,18 +201,29 @@ export function useFileActions() {
         sounds?.play('move-to-trash');
         hasSounded = true;
       }
+      outcomes.forEach((outcome, index) => {
+        const item = local[index];
+        if (!outcome.ok || !item) return;
+        entries.push({ kind: 'trashed', from: item.uri, trash: outcome.result });
+        names.push(item.name);
+      });
       reportPlatform(outcomes);
       for (const item of local) refreshFolder(parentUri(item.uri));
       await refreshPlatformTrash();
     }
     if (cloud.length > 0) {
-      const hasTrashed = await eachCloud(
+      const trashed = await eachCloud(
         cloud,
         (assetId) => oxyServices.assets.trash(assetId),
         'move a file to the trash',
       );
-      if (hasTrashed && !hasSounded) sounds?.play('move-to-trash');
+      if (trashed.length > 0 && !hasSounded) sounds?.play('move-to-trash');
+      for (const item of trashed) {
+        entries.push({ kind: 'asset-trashed', assetId: item.assetId, name: item.name });
+        names.push(item.name);
+      }
     }
+    undoHistory.record('trash', names[0] ?? '', entries);
   };
 
   return {
@@ -182,7 +234,12 @@ export function useFileActions() {
     newFolder(folderUri: string): LocalItem | null {
       const change = createFolder(folderUri, freeName(strings.untitledFolder, namesIn(folderUri)));
       refreshFolder(folderUri);
-      if (change.ok) return change.item;
+      if (change.ok) {
+        undoHistory.record('new-folder', change.item.name, [
+          { kind: 'created', uri: change.item.uri },
+        ]);
+        return change.item;
+      }
       toast.error(
         change.why.kind === 'name'
           ? strings.nameProblems[change.why.problem]
@@ -196,7 +253,42 @@ export function useFileActions() {
       const folderUri = parentUri(item.uri);
       const change = renameItem(item, folderUri, name);
       refreshFolder(folderUri);
-      return change.ok ? { item: change.item } : { why: change.why };
+      if (!change.ok) return { why: change.why };
+      undoHistory.record('rename', item.name, [
+        { kind: 'renamed', from: item.uri, to: change.item.uri },
+      ]);
+      return { item: change.item };
+    },
+
+    /**
+     * File › Duplicate: a copy of each item beside it, named as Finder names one (`notes copy.txt`);
+     * the copies made, which Finder selects.
+     */
+    async duplicate(items: readonly LocalItem[]): Promise<LocalItem[]> {
+      const made = await inTurn(async () => {
+        const copies: { item: LocalItem; uri: string }[] = [];
+        for (const item of items) {
+          const folderUri = parentUri(item.uri);
+          const name = copyName(item.name, item.isFolder, strings.copyWord, namesIn(folderUri));
+          const outcome = await relocateItem(item, folderUri, name, 'copy');
+          refreshFolder(folderUri);
+          if (!outcome.ok) {
+            reportLocal([outcome]);
+            continue;
+          }
+          copies.push({ item, uri: outcome.uri });
+        }
+        return copies;
+      });
+      const [first] = made;
+      if (first) {
+        undoHistory.record(
+          'duplicate',
+          first.item.name,
+          made.map(({ uri }) => ({ kind: 'created', uri })),
+        );
+      }
+      return itemsAtUris(made.map(({ uri }) => uri));
     },
 
     /** Dropsea's own items dragged onto a folder of the window, where there is no platform drag. */
@@ -221,14 +313,14 @@ export function useFileActions() {
       await transfer(items, folder, relocation);
     },
 
-    /** Edit › Undo: the latest move taken back, or the latest copy's copies put in the Trash. */
-    async undo(): Promise<void> {
-      await showReplayed(await undoChange(trash));
+    /** Edit › Undo: the window's latest step taken back (ADR 0002); what it came to. */
+    async undo(): Promise<Replayed | null> {
+      return showReplayed(await inTurn(() => undoHistory.undo(undoPlatform)));
     },
 
-    /** Edit › Redo: the latest move or copy undone made again. */
-    async redo(): Promise<void> {
-      await showReplayed(await redoChange());
+    /** Edit › Redo: the latest step undone done again; what it came to. */
+    async redo(): Promise<Replayed | null> {
+      return showReplayed(await inTurn(() => undoHistory.redo(undoPlatform)));
     },
 
     /** Files dropped on the sidebar's Trash: the items the URIs name now, as Move to Trash. */
@@ -248,15 +340,32 @@ export function useFileActions() {
     async putBack(items: readonly TrashItem[]): Promise<void> {
       const local = items.flatMap((item) => (item.source === 'local-trash' ? [item] : []));
       const cloud = items.flatMap((item) => (item.source === 'cloud-trash' ? [item] : []));
+      const entries: UndoEntry[] = [];
+      const names: string[] = [];
       if (local.length > 0 && files) {
         const outcomes = await files.restore(local.map((item) => item.uri));
-        for (const outcome of outcomes) if (outcome.ok) refreshFolder(parentUri(outcome.result));
+        outcomes.forEach((outcome, index) => {
+          const item = local[index];
+          if (!outcome.ok || !item) return;
+          refreshFolder(parentUri(outcome.result));
+          entries.push({ kind: 'created', uri: outcome.result });
+          names.push(item.name);
+        });
         reportPlatform(outcomes);
         await refreshPlatformTrash();
       }
       if (cloud.length > 0) {
-        await eachCloud(cloud, (assetId) => oxyServices.assets.restore(assetId), 'put a file back');
+        const restored = await eachCloud(
+          cloud,
+          (assetId) => oxyServices.assets.restore(assetId),
+          'put a file back',
+        );
+        for (const item of restored) {
+          entries.push({ kind: 'asset-restored', assetId: item.assetId, name: item.name });
+          names.push(item.name);
+        }
       }
+      undoHistory.record('put-back', names[0] ?? '', entries);
     },
 
     async eraseNow(items: readonly TrashItem[]): Promise<void> {

@@ -129,7 +129,15 @@ async function run(request: OperationRequest): Promise<TransferResult | null> {
  * when nothing was (Stop answered to a clash).
  */
 export function transferFiles(request: OperationRequest): Promise<TransferResult | null> {
-  const next = queue.then(() => run(request));
+  return inTurn(() => run(request));
+}
+
+/**
+ * Runs a change to files after those asked for before it, and before any asked for after: the
+ * window's moves, copies, duplicates, Undo and Redo, one at a time.
+ */
+export function inTurn<T>(work: () => Promise<T>): Promise<T> {
+  const next = queue.then(work);
   // The next waits for this one to end, however it ends; the caller hears how.
   queue = next.catch(() => undefined);
   return next;

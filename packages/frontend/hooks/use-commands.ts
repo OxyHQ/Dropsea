@@ -1,4 +1,6 @@
 import type { Album } from '@dropsea/shared-types';
+import { AccessibilityInfo } from 'react-native';
+import { useBrowser } from '@/components/BrowserProvider';
 import { useAlbumActions } from '@/hooks/use-album-actions';
 import { useFileActions } from '@/hooks/use-file-actions';
 import { useFileDrops } from '@/hooks/use-file-drops';
@@ -19,11 +21,12 @@ import {
   type TrashItem,
 } from '@/lib/items';
 import { HAS_DROPSEA_BACKEND } from '@/lib/dropsea-api';
-import { hasLocalFiles } from '@/lib/local-files';
-import { folderName, isSameUri, type LocalPlace, uriName } from '@/lib/local-places';
+import { hasLocalFiles, itemsAtUris } from '@/lib/local-files';
+import { folderName, isSameUri, type LocalPlace, parentUri } from '@/lib/local-places';
 import { downloadableOf } from '@/lib/transfers';
 import { favouriteTags, type ItemTag, tagState, toggledTag } from '@/lib/tags';
-import { type Change, useHistory } from '@/lib/undo';
+import type { Strings } from '@/lib/strings';
+import { type Replayed, stepName, useUndoState } from '@/lib/undo';
 
 /** Something the person can do now, from a menu, a key or a screen reader. */
 export interface Command {
@@ -65,6 +68,8 @@ export interface CommandContext {
   browseVersions: ((item: LocalItem) => void) | null;
   /** Shows a folder as it was in the person's backups; null where there are none to browse. */
   browseBackups: ((folderUri: string) => void) | null;
+  /** Tells the person why something could not be done, in an alert. */
+  showProblem: (problem: { title: string; description: string }) => void;
 }
 
 function isLocal(item: Item): item is LocalItem {
@@ -88,12 +93,20 @@ function defaultDownloadPlace(places: readonly LocalPlace[]): LocalPlace | null 
   );
 }
 
-/** A change's name in the Edit menu: a move's or a copy's, of its one item or of how many. */
-function changeName(
-  change: Change,
-  names: Record<Change['relocation'], (count: number, item: string) => string>,
-): string {
-  return names[change.relocation](change.items.length, uriName(change.items[0]?.to ?? ''));
+/** What an Undo's or a Redo's alert says when it could not be done. */
+function replayProblem(
+  done: Extract<Replayed, { ok: false }>,
+  strings: Strings,
+): { title: string; description: string } {
+  const { problem } = done;
+  const outcome = done.isUnchanged ? strings.undo.nothingChanged : strings.undo.partlyChanged;
+  if (problem.kind === 'file') {
+    return {
+      title: strings.undo.problems.file,
+      description: `${strings.fileProblems[problem.problem]} ${outcome}`,
+    };
+  }
+  return { title: strings.undo.problems[problem.kind](problem.name), description: outcome };
 }
 
 function command(isEnabled: boolean, run: () => void): Command {
@@ -137,6 +150,7 @@ export function useCommands(context: CommandContext) {
     getInfo,
     browseVersions,
     browseBackups,
+    showProblem,
   } = context;
   const fileActions = useFileActions();
   const fileDrops = useFileDrops(places);
@@ -144,7 +158,7 @@ export function useCommands(context: CommandContext) {
   const albumActions = useAlbumActions();
   const { isSignedIn, signIn } = useViewer();
   const { strings } = useLocale();
-  const history = useHistory();
+  const undoState = useUndoState(useBrowser().undoHistory);
   const tagActions = useTagActions();
 
   const isInTrash = location.kind === 'trash';
@@ -178,6 +192,29 @@ export function useCommands(context: CommandContext) {
   const selectedTags = selected.map(tagsOf);
   const changeTags = (change: TagChange) =>
     runAsync('change tags', () => tagActions.change(selected, change));
+
+  /**
+   * Selects this device's items where the window shows them, as Finder selects what an Undo
+   * brought back or a Duplicate made; items elsewhere are left as they are.
+   */
+  const selectShown = (uris: readonly string[]) => {
+    if (location.kind !== 'folder') return;
+    const keys = itemsAtUris(uris)
+      .filter((item) => isSameUri(parentUri(item.uri), location.uri))
+      .map((item) => item.key);
+    const [first] = keys;
+    if (first) setSelection({ keys, anchor: first, focus: first });
+  };
+  /** What an Undo or a Redo came to: its items selected and the screen reader told, or why not. */
+  const showReplayed = (done: Replayed | null, said: (step: string) => string) => {
+    if (!done) return;
+    if (!done.ok) {
+      showProblem(replayProblem(done, strings));
+      return;
+    }
+    selectShown(done.placed);
+    AccessibilityInfo.announceForAccessibility(said(stepName(done.step, strings)));
+  };
 
   const open = (item: Item) => {
     if (item.source === 'local' && item.isFolder) navigate({ kind: 'folder', uri: item.uri });
@@ -262,15 +299,33 @@ export function useCommands(context: CommandContext) {
     deleteAlbum: command(shownAlbum !== null, () => {
       if (shownAlbum) confirm({ kind: 'delete-album', album: shownAlbum });
     }),
-    /** Edit › Undo and Redo: the latest move or copy taken back, or made again, as Finder's. */
-    undo: command(history.undo !== null, () => runAsync('undo a change', () => fileActions.undo())),
-    undoName: history.undo
-      ? changeName(history.undo, { move: strings.menus.undoMove, copy: strings.menus.undoCopy })
+    /**
+     * Edit › Undo and Redo (ADR 0002): the window's latest step taken back, or done again, named
+     * as the menu shows it (“Undo Move “Facturas””), plain “Undo” with nothing to undo.
+     */
+    undo: command(undoState.undo !== null, () =>
+      runAsync('undo a change', async () =>
+        showReplayed(await fileActions.undo(), strings.undo.undone),
+      ),
+    ),
+    undoName: undoState.undo
+      ? strings.undo.undo(stepName(undoState.undo, strings))
       : strings.menus.undo,
-    redo: command(history.redo !== null, () => runAsync('redo a change', () => fileActions.redo())),
-    redoName: history.redo
-      ? changeName(history.redo, { move: strings.menus.redoMove, copy: strings.menus.redoCopy })
+    redo: command(undoState.redo !== null, () =>
+      runAsync('redo a change', async () =>
+        showReplayed(await fileActions.redo(), strings.undo.redone),
+      ),
+    ),
+    redoName: undoState.redo
+      ? strings.undo.redo(stepName(undoState.redo, strings))
       : strings.menus.redo,
+    /** File › Duplicate: a copy of each item beside it, the copies selected, as Finder's. */
+    duplicate: command(isAllLocal, () =>
+      runAsync('duplicate items', async () => {
+        const copies = await fileActions.duplicate(localSelected);
+        selectShown(copies.map((copy) => copy.uri));
+      }),
+    ),
     selectAll: command(shown.length > 0, selectAll),
     signIn: command(!isSignedIn, signIn),
 

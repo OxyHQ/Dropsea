@@ -161,7 +161,8 @@ export function Browser({ listing }: { listing: Listing }) {
   const [previewItem, setPreviewItem] = useState<Item | null>(null);
   const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
   const [albumBeingRenamed, setAlbumBeingRenamed] = useState<Album | null>(null);
-  const [nameProblem, setNameProblem] = useState<string | null>(null);
+  // Why something could not be done, in an alert: a name, an Undo or a Redo.
+  const [problem, setProblem] = useState<{ title: string; description?: string } | null>(null);
   // The items a Tags… panel or Get Info is open for, by key: they show their tags as they change.
   const [tagsPanelKeys, setTagsPanelKeys] = useState<readonly string[] | null>(null);
   const [infoKeys, setInfoKeys] = useState<readonly string[] | null>(null);
@@ -311,6 +312,7 @@ export function Browser({ listing }: { listing: Listing }) {
     getInfo: (chosen) => setInfoKeys(chosen.map((item) => item.key)),
     browseVersions: backups ? setVersionsOf : null,
     browseBackups: backups ? (uri) => router.push(backupsHref(uri)) : null,
+    showProblem: setProblem,
   });
   // A version restored: the window shows it selected where it now is.
   const showRestored = (uri: string) => {
@@ -369,11 +371,12 @@ export function Browser({ listing }: { listing: Listing }) {
         setReplacing({ uri: step.uri, name: browser.saveName });
         break;
       case 'problem':
-        setNameProblem(
-          step.problem === 'folder-taken'
-            ? strings.chooser.folderTaken
-            : strings.nameProblems[step.problem],
-        );
+        setProblem({
+          title:
+            step.problem === 'folder-taken'
+              ? strings.chooser.folderTaken
+              : strings.nameProblems[step.problem],
+        });
         break;
     }
   };
@@ -415,11 +418,12 @@ export function Browser({ listing }: { listing: Listing }) {
       setSelection({ keys: [result.item.key], anchor: result.item.key, focus: result.item.key });
       return;
     }
-    setNameProblem(
-      result.why.kind === 'name'
-        ? strings.nameProblems[result.why.problem]
-        : strings.fileProblems[result.why.problem],
-    );
+    setProblem({
+      title:
+        result.why.kind === 'name'
+          ? strings.nameProblems[result.why.problem]
+          : strings.fileProblems[result.why.problem],
+    });
   };
 
   useBrowserKeys({
@@ -427,7 +431,7 @@ export function Browser({ listing }: { listing: Listing }) {
       isWindowActive &&
       confirm === null &&
       replacing === null &&
-      nameProblem === null &&
+      problem === null &&
       tagsPanelKeys === null &&
       infoKeys === null,
     viewMode,
@@ -870,15 +874,16 @@ export function Browser({ listing }: { listing: Listing }) {
         testID="confirm"
       />
       <AlertDialog
-        open={nameProblem !== null}
+        open={problem !== null}
         onOpenChange={(isOpen) => {
-          if (!isOpen) setNameProblem(null);
+          if (!isOpen) setProblem(null);
         }}
-        title={nameProblem ?? ''}
+        title={problem?.title ?? ''}
+        description={problem?.description}
         confirmLabel={strings.ok}
         hideCancel
-        onConfirm={() => setNameProblem(null)}
-        testID="name-problem"
+        onConfirm={() => setProblem(null)}
+        testID="problem"
       />
       <AlertDialog
         open={replacing !== null}
