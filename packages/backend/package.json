@@ -4,7 +4,7 @@
   "type": "module",
   "dependencies": {
     "@aws-sdk/credential-providers": "^3.1161.0",
-    "@oxy.so/bloom": "18.4.2",
+    "@oxy.so/bloom": "19.5.1",
     "@oxy.so/core": "7.48.0",
     "@oxy.so/db": "^1.4.0",
     "@dropsea/shared-types": "workspace:*",
