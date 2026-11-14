@@ -57,6 +57,11 @@ export function ItemMenuRows({ item, commands }: { item: Item; commands: Command
       {commands.rename.isEnabled ? (
         <ContextMenuItem onPress={commands.rename.run}>{strings.menus.rename}</ContextMenuItem>
       ) : null}
+      {commands.duplicate.isEnabled ? (
+        <ContextMenuItem onPress={commands.duplicate.run}>
+          {strings.menus.duplicate}
+        </ContextMenuItem>
+      ) : null}
       {commands.upload.isEnabled ? (
         <ContextMenuItem onPress={commands.upload.run}>{strings.menus.upload}</ContextMenuItem>
       ) : null}

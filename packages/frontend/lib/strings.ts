@@ -7,6 +7,7 @@ import type { Kind } from '@/lib/kinds';
 import type { NameProblem } from '@/lib/names';
 import type { SearchDate, SearchKind, SearchKindWords } from '@/lib/search';
 import type { TagColor, TagNameProblem } from '@/lib/tags';
+import type { UndoAction } from '@/lib/undo';
 
 type PlaceKind = PlatformPlace['kind'] | 'device';
 
@@ -215,6 +216,42 @@ const en = {
     undated: 'No Date',
   },
   untitledFolder: 'untitled folder',
+  /** What Duplicate names a copy with: “notes copy.txt”. */
+  copyWord: 'copy',
+  /** Edit › Undo and Redo (ADR 0002). */
+  undo: {
+    actions: {
+      move: 'Move',
+      copy: 'Copy',
+      duplicate: 'Duplicate',
+      rename: 'Rename',
+      'new-folder': 'New Folder',
+      trash: 'Move to Trash',
+      'put-back': 'Put Back',
+      tags: 'Change Tags',
+    } satisfies Record<UndoAction, string>,
+    /** A step as the Edit menu names it: “Move “Facturas””, “Move 3 Items”. */
+    step: (action: string, count: number, name: string) =>
+      count === 1 ? `${action} “${name}”` : `${action} ${count} Items`,
+    undo: (step: string) => `Undo ${step}`,
+    redo: (step: string) => `Redo ${step}`,
+    /** What the screen reader says once it is done. */
+    undone: (step: string) => `Undone: ${step}`,
+    redone: (step: string) => `Redone: ${step}`,
+    problems: {
+      gone: (name: string) =>
+        `The operation can’t be completed because the original item for “${name}” can’t be found.`,
+      taken: (name: string) =>
+        `The operation can’t be completed because an item with the name “${name}” already exists.`,
+      'folder-gone': (name: string) =>
+        `The operation can’t be completed because the folder “${name}” can’t be found.`,
+      'tags-changed': (name: string) =>
+        `The operation can’t be completed because the tags of “${name}” have changed.`,
+      file: 'The operation can’t be completed.',
+    },
+    nothingChanged: 'Nothing was changed.',
+    partlyChanged: 'Some items were changed.',
+  },
   untitledAlbum: 'Untitled Album',
   menus: {
     file: 'File',
@@ -239,16 +276,9 @@ const en = {
     removeFromAlbum: 'Remove from Album',
     renameAlbum: 'Rename Album…',
     deleteAlbum: 'Delete Album…',
+    duplicate: 'Duplicate',
     undo: 'Undo',
     redo: 'Redo',
-    undoMove: (count: number, name: string) =>
-      count === 1 ? `Undo Move of “${name}”` : `Undo Move of ${count} Items`,
-    redoMove: (count: number, name: string) =>
-      count === 1 ? `Redo Move of “${name}”` : `Redo Move of ${count} Items`,
-    undoCopy: (count: number, name: string) =>
-      count === 1 ? `Undo Copy of “${name}”` : `Undo Copy of ${count} Items`,
-    redoCopy: (count: number, name: string) =>
-      count === 1 ? `Redo Copy of “${name}”` : `Redo Copy of ${count} Items`,
     cut: 'Cut',
     copy: 'Copy',
     paste: 'Paste',
@@ -622,6 +652,38 @@ const es: Strings = {
     undated: 'Sin fecha',
   },
   untitledFolder: 'carpeta sin título',
+  copyWord: 'copia',
+  undo: {
+    actions: {
+      move: 'Mover',
+      copy: 'Copiar',
+      duplicate: 'Duplicar',
+      rename: 'Renombrar',
+      'new-folder': 'Nueva carpeta',
+      trash: 'Trasladar a la papelera',
+      'put-back': 'Devolver',
+      tags: 'Cambiar etiquetas',
+    },
+    step: (action, count, name) =>
+      count === 1 ? `${action} «${name}»` : `${action} ${count} elementos`,
+    undo: (step) => `Deshacer ${step}`,
+    redo: (step) => `Rehacer ${step}`,
+    undone: (step) => `Deshecho: ${step}`,
+    redone: (step) => `Rehecho: ${step}`,
+    problems: {
+      gone: (name) =>
+        `No se puede completar la operación porque no se encuentra el ítem original de «${name}».`,
+      taken: (name) =>
+        `No se puede completar la operación porque ya existe un ítem con el nombre «${name}».`,
+      'folder-gone': (name) =>
+        `No se puede completar la operación porque no se encuentra la carpeta «${name}».`,
+      'tags-changed': (name) =>
+        `No se puede completar la operación porque las etiquetas de «${name}» han cambiado.`,
+      file: 'No se puede completar la operación.',
+    },
+    nothingChanged: 'No se ha cambiado nada.',
+    partlyChanged: 'Algunos elementos sí se han cambiado.',
+  },
   untitledAlbum: 'Álbum sin título',
   menus: {
     file: 'Archivo',
@@ -646,20 +708,9 @@ const es: Strings = {
     removeFromAlbum: 'Quitar del álbum',
     renameAlbum: 'Renombrar álbum…',
     deleteAlbum: 'Eliminar álbum…',
+    duplicate: 'Duplicar',
     undo: 'Deshacer',
     redo: 'Rehacer',
-    undoMove: (count, name) =>
-      count === 1
-        ? `Deshacer el traslado de «${name}»`
-        : `Deshacer el traslado de ${count} elementos`,
-    redoMove: (count, name) =>
-      count === 1
-        ? `Rehacer el traslado de «${name}»`
-        : `Rehacer el traslado de ${count} elementos`,
-    undoCopy: (count, name) =>
-      count === 1 ? `Deshacer la copia de «${name}»` : `Deshacer la copia de ${count} elementos`,
-    redoCopy: (count, name) =>
-      count === 1 ? `Rehacer la copia de «${name}»` : `Rehacer la copia de ${count} elementos`,
     cut: 'Cortar',
     copy: 'Copiar',
     paste: 'Pegar',

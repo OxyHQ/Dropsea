@@ -116,6 +116,26 @@ export function freeFileName(name: string, taken: readonly string[]): string {
   }
 }
 
+/**
+ * A duplicate's name, as Finder's Duplicate names it: `notes copy.txt`, then `notes copy 2.txt`,
+ * the word (`copy`) the person's language's, a folder's whole name its stem.
+ */
+export function copyName(
+  name: string,
+  isFolder: boolean,
+  word: string,
+  taken: readonly string[],
+): string {
+  const names = new Set(taken.map((other) => other.toLowerCase()));
+  const { stem, extension } = isFolder ? { stem: name, extension: '' } : splitExtension(name);
+  const first = `${stem} ${word}${extension}`;
+  if (!names.has(first.toLowerCase())) return first;
+  for (let number = 2; ; number++) {
+    const candidate = `${stem} ${word} ${number}${extension}`;
+    if (!names.has(candidate.toLowerCase())) return candidate;
+  }
+}
+
 /** The part of a name a rename selects first: before its extension, as Finder does. */
 export function nameSelection(name: string, isFolder: boolean): { start: number; end: number } {
   if (isFolder) return { start: 0, end: name.length };

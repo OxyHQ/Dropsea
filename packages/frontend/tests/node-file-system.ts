@@ -181,18 +181,62 @@ export function pathsAt(documentFolder: string) {
 }
 
 /**
- * A platform's Trash (`usePlatformFiles().trash`) in a folder a test makes: each item moved into
- * it, under a name of its own there, as OxyOS's Trash keeps several of one name.
+ * A platform's Trash (`usePlatformFiles()`'s `trash`, `trashed` and `restore`) in a folder a test
+ * makes: each item moved into it under a name of its own there, as OxyOS's Trash keeps several of
+ * one name, remembering where it was; put back there, never over an item there.
  */
-export function trashAt(trashFolder: string) {
+export function platformTrashAt(trashFolder: string) {
   let number = 0;
-  return async (uris: readonly string[]) =>
-    uris.map((uri) => {
-      const target = pathOf(uri).replace(/\/+$/, '');
-      if (!fs.existsSync(target)) return { uri, ok: false as const, error: 'not-found' as const };
-      number++;
-      const trashed = path.join(trashFolder, `${number} ${path.basename(target)}`);
-      fs.renameSync(target, trashed);
-      return { uri, ok: true as const, result: uriOf(trashed, false) };
-    });
+  const origins = new Map<string, string>();
+  const isDirectory = (target: string) =>
+    fs.statSync(target, { throwIfNoEntry: false })?.isDirectory() === true;
+  return {
+    async trash(uris: readonly string[]) {
+      return uris.map((uri) => {
+        const target = pathOf(uri).replace(/\/+$/, '');
+        if (!fs.existsSync(target)) return { uri, ok: false as const, error: 'not-found' as const };
+        number++;
+        const trashed = path.join(trashFolder, `${number} ${path.basename(target)}`);
+        const wasDirectory = isDirectory(target);
+        fs.renameSync(target, trashed);
+        origins.set(trashed, target);
+        return { uri, ok: true as const, result: uriOf(trashed, wasDirectory) };
+      });
+    },
+    async trashed() {
+      return fs.readdirSync(trashFolder).map((name) => {
+        const trashed = path.join(trashFolder, name);
+        const original = origins.get(trashed) ?? null;
+        return {
+          uri: uriOf(trashed, isDirectory(trashed)),
+          name: original ? path.basename(original) : name,
+          isDirectory: isDirectory(trashed),
+          originalUri: original ? uriOf(original, isDirectory(trashed)) : null,
+          deletedAt: null,
+          size: null,
+          lastModified: null,
+          tags: [],
+        };
+      });
+    },
+    async restore(uris: readonly string[]) {
+      return uris.map((uri) => {
+        const trashed = pathOf(uri).replace(/\/+$/, '');
+        const original = origins.get(trashed);
+        if (!original || !fs.existsSync(trashed)) {
+          return { uri, ok: false as const, error: 'not-found' as const };
+        }
+        if (fs.existsSync(original)) return { uri, ok: false as const, error: 'exists' as const };
+        const wasDirectory = isDirectory(trashed);
+        fs.renameSync(trashed, original);
+        origins.delete(trashed);
+        return { uri, ok: true as const, result: uriOf(original, wasDirectory) };
+      });
+    },
+  };
+}
+
+/** A platform's `trash` alone, for what a Replace replaces. */
+export function trashAt(trashFolder: string) {
+  return platformTrashAt(trashFolder).trash;
 }

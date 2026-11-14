@@ -6,7 +6,7 @@
  * as the file chooser's save panel, the name being typed, kept as it goes from
  * folder to folder. And where it goes back to when a folder sprang open under
  * a drag that then exits the window without a drop in it (OxyOS ADR 0047,
- * decision 14).
+ * decision 14). And its Undo history, kept as long as the window is open.
  */
 import { useWindowDrag } from '@oxy.so/bloom/drop-zone';
 import { usePlatformFiles } from '@oxy.so/bloom/platform-surface';
@@ -25,6 +25,7 @@ import { type Location, sameLocation } from '@/lib/items';
 import { hrefFor, locationFromRoute } from '@/lib/routes';
 import { type Grouping, NAME_ORDER, type SortOrder } from '@/lib/sorting';
 import { SpringBack } from '@/lib/spring-loading';
+import { UndoHistory } from '@/lib/undo';
 
 export type ViewMode = 'icons' | 'list';
 
@@ -79,6 +80,8 @@ interface BrowserValue {
   /** The save panel's name, from the asking application's suggestion until the person types. */
   saveName: string;
   setSaveName: (name: string) => void;
+  /** What Edit › Undo and Redo take back and do again in this window (ADR 0002). */
+  undoHistory: UndoHistory;
 }
 
 /** The preview pane's width until the person drags it, Finder's. */
@@ -111,6 +114,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
   // Finder's windows show their path bar once the person has asked for it; Dropsea's from the start.
   const [isPathBarShown, setPathBarShown] = useState(true);
   const [springBack] = useState(() => new SpringBack<Location>());
+  const [undoHistory] = useState(() => new UndoHistory());
   const suggestedName = usePlatformFiles()?.chooser?.request.suggestedName ?? '';
   const [saveName, setSaveName] = useState(suggestedName);
 
@@ -190,6 +194,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     springOpen,
     saveName,
     setSaveName,
+    undoHistory,
   };
   return <BrowserContext value={value}>{children}</BrowserContext>;
 }
