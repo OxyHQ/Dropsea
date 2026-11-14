@@ -21,7 +21,7 @@ import {
 } from '@oxy.so/bloom/icons';
 import { PageHeader } from '@oxy.so/bloom/page-header';
 import type { PlatformSearchToken } from '@oxy.so/bloom/platform-surface';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import type { ViewMode } from '@/components/BrowserProvider';
 import { SearchField } from '@/components/SearchField';
@@ -44,6 +44,7 @@ export function Toolbar({
   onPreviewShown,
   onUpload,
   onTags,
+  findRequest,
 }: {
   title: string;
   /** The place shown, which the search looks in: the title, but in the file chooser, whose title is its own. */
@@ -65,12 +66,21 @@ export function Toolbar({
   onUpload: (() => void) | null;
   /** The Tags button, Finder's: the selection's tags (null where nothing selected takes tags). */
   onTags: (() => void) | null;
+  /** Rises at each Edit › Find…: the search field opens, if it is a button, and takes the keyboard. */
+  findRequest: number;
 }) {
   const { strings } = useLocale();
   const { navigationDock } = useAppShell();
   // A narrow toolbar keeps the search as its button, Finder's, until it is
   // pressed or holds text.
   const [isSearchOpen, setSearchOpen] = useState(false);
+  // Edit › Find… opens it: as its button pressed in a narrow toolbar, and the field focused.
+  const handledFind = useRef(findRequest);
+  useEffect(() => {
+    if (findRequest === handledFind.current) return;
+    handledFind.current = findRequest;
+    setSearchOpen(true);
+  }, [findRequest]);
   return (
     <PageHeader
       testID="toolbar"
@@ -187,6 +197,7 @@ export function Toolbar({
                 onTokensChange={onSearchTokens}
                 onBlur={() => setSearchOpen(false)}
                 isAutoFocused={compact && isSearchOpen}
+                focusRequest={findRequest}
                 placeholder={compact ? strings.search : strings.searchIn(placeName)}
               />
             </View>

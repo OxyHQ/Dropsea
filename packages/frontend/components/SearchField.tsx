@@ -19,7 +19,7 @@ import { Portal } from '@oxy.so/bloom/portal';
 import { Search } from '@oxy.so/bloom/search';
 import { Surface } from '@oxy.so/bloom/surface';
 import { Text } from '@oxy.so/bloom/typography';
-import { type ComponentRef, useRef, useState } from 'react';
+import { type ComponentRef, useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, useWindowDimensions, View } from 'react-native';
 import { useLocalTagNames } from '@/hooks/use-item-tags';
 import { useLocale } from '@/hooks/use-locale';
@@ -64,6 +64,7 @@ export function SearchField({
   onTokensChange,
   placeholder,
   isAutoFocused,
+  focusRequest,
   onBlur,
 }: {
   value: string;
@@ -73,6 +74,8 @@ export function SearchField({
   onTokensChange: (tokens: readonly PlatformSearchToken[]) => void;
   placeholder: string;
   isAutoFocused: boolean;
+  /** Rises at each Edit › Find…: the field takes the keyboard, its text selected to type over. */
+  focusRequest: number;
   onBlur: () => void;
 }) {
   const { strings } = useLocale();
@@ -81,6 +84,15 @@ export function SearchField({
   const localTagNames = useLocalTagNames(tokens !== null);
   const windowSize = useWindowDimensions();
   const field = useRef<ComponentRef<typeof View>>(null);
+  const input = useRef<ComponentRef<typeof Search>>(null);
+  // A request made before the field was there (a narrow toolbar's button) is its autofocus's.
+  const handledFocus = useRef(focusRequest);
+  useEffect(() => {
+    if (focusRequest === handledFocus.current) return;
+    handledFocus.current = focusRequest;
+    input.current?.focus();
+    input.current?.setSelection(0, value.length);
+  }, [focusRequest, value.length]);
   const [frame, setFrame] = useState<FieldFrame | null>(null);
   const [isFocused, setFocused] = useState(false);
   // Escape (or Return on no row) closes the menu until the text changes.
@@ -156,6 +168,7 @@ export function SearchField({
   return (
     <View ref={field} onLayout={measure} collapsable={false}>
       <Search
+        ref={input}
         size="sm"
         value={value}
         onChangeText={(text) => {
