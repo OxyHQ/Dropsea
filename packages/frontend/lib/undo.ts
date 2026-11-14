@@ -76,12 +76,12 @@ export type UndoEntry =
 /** A step of the history: what the person did, the first item's name, and an entry for each item. */
 export interface UndoStep {
   action: UndoAction;
-  /** The first item's name as the person acted on it: “Undo Move “Facturas””. */
+  /** The first item's name as the person acted on it: “Undo Move of “Facturas””. */
   name: string;
   entries: readonly UndoEntry[];
 }
 
-/** A step as the Edit menu names it: “Move “Facturas””, “Move 3 Items”. */
+/** A step as the Edit menu names it, as Finder's: “Move of “Facturas””, “Move of 3 Items”. */
 export function stepName(step: UndoStep, strings: Strings): string {
   return strings.undo.step(strings.undo.actions[step.action], step.entries.length, step.name);
 }
