@@ -154,6 +154,8 @@ export function Browser({ listing }: { listing: Listing }) {
     ),
   );
   const [search, setSearch] = useState('');
+  // Rises at each Edit › Find… (the toolbar's search field takes the keyboard).
+  const [findRequest, setFindRequest] = useState(0);
   // The search's filters, as tokens, and where it looks: where the platform searches its index.
   const [searchTokens, setSearchTokens] = useState<readonly PlatformSearchToken[]>([]);
   const [searchScope, setSearchScope] = useState<SearchScope>('computer');
@@ -760,6 +762,7 @@ export function Browser({ listing }: { listing: Listing }) {
       onEnclosing={enclosing ? () => browser.navigate(enclosing) : null}
       onGo={browser.navigate}
       onSettings={() => browser.setSettingsOpen(true)}
+      onFind={() => setFindRequest((count) => count + 1)}
     />
   );
 
@@ -775,6 +778,7 @@ export function Browser({ listing }: { listing: Listing }) {
           onViewMode={(mode) => browser.setViewMode(location, mode)}
           search={search}
           onSearch={setSearch}
+          findRequest={findRequest}
           searchTokens={platformSearch !== null && folderUri !== null ? searchTokens : null}
           onSearchTokens={setSearchTokens}
           canGoBack={browser.canGoBack}
