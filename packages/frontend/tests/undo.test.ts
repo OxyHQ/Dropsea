@@ -195,19 +195,25 @@ describe('the Edit menu names the step, as Finder: “Undo Move of “Facturas�
     expect(menuTitles()).toEqual({ undo: 'Undo Move of “Facturas”', redo: 'Redo' });
     const step = history.getState().undo;
     if (!step) throw new Error('the move is not undoable');
-    expect(spanish.undo.undo(undo.stepName(step, spanish))).toBe('Deshacer el traslado de «Facturas»');
+    expect(spanish.undo.undo(undo.stepName(step, spanish))).toBe(
+      'Deshacer el traslado de «Facturas»',
+    );
 
     await history.undo(platform);
     expect(menuTitles()).toEqual({ undo: 'Undo', redo: 'Redo Move of “Facturas”' });
     const redo = history.getState().redo;
     if (!redo) throw new Error('the move is not redoable');
-    expect(spanish.undo.redo(undo.stepName(redo, spanish))).toBe('Rehacer el traslado de «Facturas»');
+    expect(spanish.undo.redo(undo.stepName(redo, spanish))).toBe(
+      'Rehacer el traslado de «Facturas»',
+    );
 
     await move(['notes.txt', 'plan.txt', 'Facturas'], '.', 'Pictures');
     expect(menuTitles()).toEqual({ undo: 'Undo Move of 3 Items', redo: 'Redo' });
     const batch = history.getState().undo;
     if (!batch) throw new Error('the batch is not undoable');
-    expect(spanish.undo.undo(undo.stepName(batch, spanish))).toBe('Deshacer el traslado de 3 elementos');
+    expect(spanish.undo.undo(undo.stepName(batch, spanish))).toBe(
+      'Deshacer el traslado de 3 elementos',
+    );
   });
 
   test('what the screen reader says once done names the step the same way', () => {
@@ -237,7 +243,10 @@ describe('the Edit menu names the step, as Finder: “Undo Move of “Facturas�
       'el traslado a la papelera de «Facturas»',
     ]);
     expect(named('put-back')).toEqual(['Put Back of “Facturas”', 'la devolución de «Facturas»']);
-    expect(named('tags')).toEqual(['Change Tags of “Facturas”', 'el cambio de etiquetas de «Facturas»']);
+    expect(named('tags')).toEqual([
+      'Change Tags of “Facturas”',
+      'el cambio de etiquetas de «Facturas»',
+    ]);
   });
 });
 
