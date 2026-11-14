@@ -291,7 +291,7 @@ describe('Undo and Redo of moves', () => {
     expect(read('plan.txt')).toBe('a new plan');
     expect(names('.')).toEqual(['Facturas', 'Pictures', 'plan.txt']);
     // The step stays: once the way is clear, Undo takes it back.
-    expect(menuTitles().undo).toBe('Undo Move 2 Items');
+    expect(menuTitles().undo).toBe('Undo Move of 2 Items');
     fs.rmSync(path.join(root, 'plan.txt'));
     expect(await history.undo(platform)).toMatchObject({ ok: true });
     expect(read('plan.txt')).toBe('plan');
@@ -332,7 +332,7 @@ describe('Undo and Redo of Move to Trash', () => {
   test('Undo puts the items back where they were, Redo puts them in the Trash again', async () => {
     await moveToTrash(['Facturas', 'notes.txt']);
     expect(names('.')).toEqual(['Pictures', 'plan.txt']);
-    expect(menuTitles().undo).toBe('Undo Move to Trash 2 Items');
+    expect(menuTitles().undo).toBe('Undo Move to Trash of 2 Items');
 
     const undone = await history.undo(platform);
     expect(undone?.ok === true && undone.placed).toEqual([folderUri('Facturas'), uri('notes.txt')]);
@@ -395,7 +395,7 @@ describe('Undo and Redo of Move to Trash', () => {
       { kind: 'trashed', from: uri('notes.txt'), trash: outcome.result },
       { kind: 'asset-trashed', assetId: 'asset-1', name: 'beach.png' },
     ]);
-    expect(menuTitles().undo).toBe('Undo Move to Trash 2 Items');
+    expect(menuTitles().undo).toBe('Undo Move to Trash of 2 Items');
     expect(await history.undo(platform)).toMatchObject({ ok: true });
     expect(names('.')).toContain('notes.txt');
     expect(cloud.trashed.has('asset-1')).toBe(false);
@@ -414,7 +414,7 @@ describe('Undo and Redo of renames', () => {
     history.record('rename', 'notes.txt', [
       { kind: 'renamed', from: notes.uri, to: change.item.uri },
     ]);
-    expect(menuTitles().undo).toBe('Undo Rename “notes.txt”');
+    expect(menuTitles().undo).toBe('Undo Rename of “notes.txt”');
 
     const undone = await history.undo(platform);
     expect(undone?.ok === true && undone.placed).toEqual([uri('notes.txt')]);
@@ -486,7 +486,7 @@ describe('Undo and Redo of what came to be: copies, duplicates and new folders',
     const outcome = await local.relocateItem(notes, uri('.'), 'notes copy.txt', 'copy');
     if (!outcome.ok) throw new Error('notes.txt was not duplicated');
     history.record('duplicate', 'notes.txt', [{ kind: 'created', uri: outcome.uri }]);
-    expect(menuTitles().undo).toBe('Undo Duplicate “notes.txt”');
+    expect(menuTitles().undo).toBe('Undo Duplicate of “notes.txt”');
     await history.undo(platform);
     expect(names('.')).toEqual(['Facturas', 'Pictures', 'notes.txt', 'plan.txt']);
     expect(trashNames()).toEqual(['notes copy.txt']);
@@ -536,7 +536,7 @@ describe('Undo and Redo of tags', () => {
         ],
       },
     ]);
-    expect(menuTitles().undo).toBe('Undo Change Tags 2 Items');
+    expect(menuTitles().undo).toBe('Undo Change Tags of 2 Items');
     await history.undo(platform);
     expect(tags.names(uri('notes.txt'))).toEqual([]);
     expect(tags.names(uri('plan.txt'))).toEqual(['Work']);
@@ -613,7 +613,7 @@ describe('a step undone whole or not at all', () => {
     });
     expect(names('.')).toEqual(['Facturas', 'Pictures']);
     expect(trashNames()).toEqual(['notes.txt', 'plan.txt']);
-    expect(menuTitles().undo).toBe('Undo Move to Trash 2 Items');
+    expect(menuTitles().undo).toBe('Undo Move to Trash of 2 Items');
     expect(await history.undo(platform)).toMatchObject({ ok: true });
     expect(names('.')).toEqual(['Facturas', 'Pictures', 'notes.txt', 'plan.txt']);
   });
