@@ -230,9 +230,9 @@ const en = {
       'put-back': 'Put Back',
       tags: 'Change Tags',
     } satisfies Record<UndoAction, string>,
-    /** A step as the Edit menu names it: “Move “Facturas””, “Move 3 Items”. */
+    /** A step as Finder's Edit menu names it: “Move of “Facturas””, “Move of 3 Items”. */
     step: (action: string, count: number, name: string) =>
-      count === 1 ? `${action} “${name}”` : `${action} ${count} Items`,
+      count === 1 ? `${action} of “${name}”` : `${action} of ${count} Items`,
     undo: (step: string) => `Undo ${step}`,
     redo: (step: string) => `Redo ${step}`,
     /** What the screen reader says once it is done. */
@@ -654,18 +654,19 @@ const es: Strings = {
   untitledFolder: 'carpeta sin título',
   copyWord: 'copia',
   undo: {
+    // Each a noun with its article, as the Spanish Finder names a step: «el traslado de «Facturas»».
     actions: {
-      move: 'Mover',
-      copy: 'Copiar',
-      duplicate: 'Duplicar',
-      rename: 'Renombrar',
-      'new-folder': 'Nueva carpeta',
-      trash: 'Trasladar a la papelera',
-      'put-back': 'Devolver',
-      tags: 'Cambiar etiquetas',
+      move: 'el traslado',
+      copy: 'la copia',
+      duplicate: 'el duplicado',
+      rename: 'el cambio de nombre',
+      'new-folder': 'la creación',
+      trash: 'el traslado a la papelera',
+      'put-back': 'la devolución',
+      tags: 'el cambio de etiquetas',
     },
     step: (action, count, name) =>
-      count === 1 ? `${action} «${name}»` : `${action} ${count} elementos`,
+      count === 1 ? `${action} de «${name}»` : `${action} de ${count} elementos`,
     undo: (step) => `Deshacer ${step}`,
     redo: (step) => `Rehacer ${step}`,
     undone: (step) => `Deshecho: ${step}`,

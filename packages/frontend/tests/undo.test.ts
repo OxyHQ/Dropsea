@@ -188,26 +188,43 @@ function menuTitles(state = history.getState()) {
   };
 }
 
-describe('the Edit menu names the step, as Finder', () => {
+describe('the Edit menu names the step, as Finder: “Undo Move of “Facturas””', () => {
   test('one item by its name, several by how many, plain Undo with none, in English and Spanish', async () => {
     expect(menuTitles()).toEqual({ undo: 'Undo', redo: 'Redo' });
     await move(['Facturas'], '.', 'Pictures');
-    expect(menuTitles()).toEqual({ undo: 'Undo Move “Facturas”', redo: 'Redo' });
+    expect(menuTitles()).toEqual({ undo: 'Undo Move of “Facturas”', redo: 'Redo' });
     const step = history.getState().undo;
     if (!step) throw new Error('the move is not undoable');
-    expect(spanish.undo.undo(undo.stepName(step, spanish))).toBe('Deshacer Mover «Facturas»');
+    expect(spanish.undo.undo(undo.stepName(step, spanish))).toBe(
+      'Deshacer el traslado de «Facturas»',
+    );
 
     await history.undo(platform);
-    expect(menuTitles()).toEqual({ undo: 'Undo', redo: 'Redo Move “Facturas”' });
+    expect(menuTitles()).toEqual({ undo: 'Undo', redo: 'Redo Move of “Facturas”' });
     const redo = history.getState().redo;
     if (!redo) throw new Error('the move is not redoable');
-    expect(spanish.undo.redo(undo.stepName(redo, spanish))).toBe('Rehacer Mover «Facturas»');
+    expect(spanish.undo.redo(undo.stepName(redo, spanish))).toBe(
+      'Rehacer el traslado de «Facturas»',
+    );
 
     await move(['notes.txt', 'plan.txt', 'Facturas'], '.', 'Pictures');
-    expect(menuTitles()).toEqual({ undo: 'Undo Move 3 Items', redo: 'Redo' });
+    expect(menuTitles()).toEqual({ undo: 'Undo Move of 3 Items', redo: 'Redo' });
     const batch = history.getState().undo;
     if (!batch) throw new Error('the batch is not undoable');
-    expect(spanish.undo.undo(undo.stepName(batch, spanish))).toBe('Deshacer Mover 3 elementos');
+    expect(spanish.undo.undo(undo.stepName(batch, spanish))).toBe(
+      'Deshacer el traslado de 3 elementos',
+    );
+  });
+
+  test('what the screen reader says once done names the step the same way', () => {
+    const each = new undo.UndoHistory();
+    each.record('copy', 'notes.txt', [{ kind: 'created', uri: uri('notes 2.txt') }]);
+    const step = each.getState().undo;
+    if (!step) throw new Error('the copy is not undoable');
+    expect(english.undo.undone(undo.stepName(step, english))).toBe('Undone: Copy of “notes.txt”');
+    expect(spanish.undo.undone(undo.stepName(step, spanish))).toBe(
+      'Deshecho: la copia de «notes.txt»',
+    );
   });
 
   test('each action has its own name', () => {
@@ -217,16 +234,19 @@ describe('the Edit menu names the step, as Finder', () => {
       const step = each.getState().undo;
       return step ? [undo.stepName(step, english), undo.stepName(step, spanish)] : null;
     };
-    expect(named('copy')).toEqual(['Copy “Facturas”', 'Copiar «Facturas»']);
-    expect(named('duplicate')).toEqual(['Duplicate “Facturas”', 'Duplicar «Facturas»']);
-    expect(named('rename')).toEqual(['Rename “Facturas”', 'Renombrar «Facturas»']);
-    expect(named('new-folder')).toEqual(['New Folder “Facturas”', 'Nueva carpeta «Facturas»']);
+    expect(named('copy')).toEqual(['Copy of “Facturas”', 'la copia de «Facturas»']);
+    expect(named('duplicate')).toEqual(['Duplicate of “Facturas”', 'el duplicado de «Facturas»']);
+    expect(named('rename')).toEqual(['Rename of “Facturas”', 'el cambio de nombre de «Facturas»']);
+    expect(named('new-folder')).toEqual(['New Folder of “Facturas”', 'la creación de «Facturas»']);
     expect(named('trash')).toEqual([
-      'Move to Trash “Facturas”',
-      'Trasladar a la papelera «Facturas»',
+      'Move to Trash of “Facturas”',
+      'el traslado a la papelera de «Facturas»',
     ]);
-    expect(named('put-back')).toEqual(['Put Back “Facturas”', 'Devolver «Facturas»']);
-    expect(named('tags')).toEqual(['Change Tags “Facturas”', 'Cambiar etiquetas «Facturas»']);
+    expect(named('put-back')).toEqual(['Put Back of “Facturas”', 'la devolución de «Facturas»']);
+    expect(named('tags')).toEqual([
+      'Change Tags of “Facturas”',
+      'el cambio de etiquetas de «Facturas»',
+    ]);
   });
 });
 
@@ -280,7 +300,7 @@ describe('Undo and Redo of moves', () => {
     expect(read('plan.txt')).toBe('a new plan');
     expect(names('.')).toEqual(['Facturas', 'Pictures', 'plan.txt']);
     // The step stays: once the way is clear, Undo takes it back.
-    expect(menuTitles().undo).toBe('Undo Move 2 Items');
+    expect(menuTitles().undo).toBe('Undo Move of 2 Items');
     fs.rmSync(path.join(root, 'plan.txt'));
     expect(await history.undo(platform)).toMatchObject({ ok: true });
     expect(read('plan.txt')).toBe('plan');
@@ -321,7 +341,7 @@ describe('Undo and Redo of Move to Trash', () => {
   test('Undo puts the items back where they were, Redo puts them in the Trash again', async () => {
     await moveToTrash(['Facturas', 'notes.txt']);
     expect(names('.')).toEqual(['Pictures', 'plan.txt']);
-    expect(menuTitles().undo).toBe('Undo Move to Trash 2 Items');
+    expect(menuTitles().undo).toBe('Undo Move to Trash of 2 Items');
 
     const undone = await history.undo(platform);
     expect(undone?.ok === true && undone.placed).toEqual([folderUri('Facturas'), uri('notes.txt')]);
@@ -384,7 +404,7 @@ describe('Undo and Redo of Move to Trash', () => {
       { kind: 'trashed', from: uri('notes.txt'), trash: outcome.result },
       { kind: 'asset-trashed', assetId: 'asset-1', name: 'beach.png' },
     ]);
-    expect(menuTitles().undo).toBe('Undo Move to Trash 2 Items');
+    expect(menuTitles().undo).toBe('Undo Move to Trash of 2 Items');
     expect(await history.undo(platform)).toMatchObject({ ok: true });
     expect(names('.')).toContain('notes.txt');
     expect(cloud.trashed.has('asset-1')).toBe(false);
@@ -403,7 +423,7 @@ describe('Undo and Redo of renames', () => {
     history.record('rename', 'notes.txt', [
       { kind: 'renamed', from: notes.uri, to: change.item.uri },
     ]);
-    expect(menuTitles().undo).toBe('Undo Rename “notes.txt”');
+    expect(menuTitles().undo).toBe('Undo Rename of “notes.txt”');
 
     const undone = await history.undo(platform);
     expect(undone?.ok === true && undone.placed).toEqual([uri('notes.txt')]);
@@ -475,7 +495,7 @@ describe('Undo and Redo of what came to be: copies, duplicates and new folders',
     const outcome = await local.relocateItem(notes, uri('.'), 'notes copy.txt', 'copy');
     if (!outcome.ok) throw new Error('notes.txt was not duplicated');
     history.record('duplicate', 'notes.txt', [{ kind: 'created', uri: outcome.uri }]);
-    expect(menuTitles().undo).toBe('Undo Duplicate “notes.txt”');
+    expect(menuTitles().undo).toBe('Undo Duplicate of “notes.txt”');
     await history.undo(platform);
     expect(names('.')).toEqual(['Facturas', 'Pictures', 'notes.txt', 'plan.txt']);
     expect(trashNames()).toEqual(['notes copy.txt']);
@@ -525,7 +545,7 @@ describe('Undo and Redo of tags', () => {
         ],
       },
     ]);
-    expect(menuTitles().undo).toBe('Undo Change Tags 2 Items');
+    expect(menuTitles().undo).toBe('Undo Change Tags of 2 Items');
     await history.undo(platform);
     expect(tags.names(uri('notes.txt'))).toEqual([]);
     expect(tags.names(uri('plan.txt'))).toEqual(['Work']);
@@ -602,7 +622,7 @@ describe('a step undone whole or not at all', () => {
     });
     expect(names('.')).toEqual(['Facturas', 'Pictures']);
     expect(trashNames()).toEqual(['notes.txt', 'plan.txt']);
-    expect(menuTitles().undo).toBe('Undo Move to Trash 2 Items');
+    expect(menuTitles().undo).toBe('Undo Move to Trash of 2 Items');
     expect(await history.undo(platform)).toMatchObject({ ok: true });
     expect(names('.')).toEqual(['Facturas', 'Pictures', 'notes.txt', 'plan.txt']);
   });
