@@ -8,7 +8,7 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "export:web": "expo export --platform web",
+    "export:web": "expo export --platform web && oxy-web-pwa dist --theme-color=#f7ebf0,#1f031d",
     "typecheck": "bun ../../scripts/generate-router-types.mjs && tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
     "test": "bun test"
   },
@@ -16,7 +16,7 @@
     "@dropsea/shared-types": "workspace:*",
     "@expo/app-integrity": "~58.0.2",
     "@expo/vector-icons": "^15.1.1",
-    "@oxy.so/app-preset": "6.7.2",
+    "@oxy.so/app-preset": "6.7.3",
     "@oxy.so/bloom": "21.5.0",
     "@oxy.so/core": "7.51.0",
     "@oxy.so/services": "14.21.0",
